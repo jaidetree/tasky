@@ -1,0 +1,6 @@
+.direnv
+frontend/build
+frontend/lib
+backend/deps
+backend/_build
+postgres_data
