@@ -215,9 +215,25 @@ defmodule Tasky.Tracking do
 
   """
   def create_time_session(attrs \\ %{}) do
-    %TimeSession{}
-    |> TimeSession.changeset(attrs)
-    |> Repo.insert()
+    # Find any active time session that needs to be interrupted
+    active_session = get_active_time_session()
+
+    # Start a transaction to ensure both operations succeed or fail together
+    Repo.transaction(fn ->
+      # If there's an active session, interrupt it with the new task
+      if active_session do
+        {:ok, _interrupted} = interrupt_time_session(active_session, attrs.task_id)
+      end
+
+      # Create the new time session
+      %TimeSession{}
+      |> TimeSession.changeset(attrs)
+      |> Repo.insert()
+      |> case do
+        {:ok, session} -> session
+        {:error, changeset} -> Repo.rollback(changeset)
+      end
+    end)
   end
 
   @doc """

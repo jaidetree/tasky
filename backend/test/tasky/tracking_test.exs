@@ -258,5 +258,38 @@ defmodule Tasky.TrackingTest do
       total_minutes_direct = Tracking.get_total_minutes_by_task(task.id)
       assert_in_delta total_minutes_direct, 45, 0.1
     end
+
+    test "create_time_session/1 interrupts active session when creating a new one", %{} do
+      # Create a first task
+      first_task = task_fixture(%{title: "First Task"})
+
+      # Start a time session for the first task
+      {:ok, first_session} = Tracking.start_time_session(first_task.id)
+
+      # Verify it's active
+      assert is_nil(first_session.end_time)
+      assert first_session.task_id == first_task.id
+
+      # Create a second task
+      second_task = task_fixture(%{title: "Second Task"})
+
+      # Start a time session for the second task - this should interrupt the first
+      {:ok, second_session} = Tracking.start_time_session(second_task.id)
+
+      # Verify the second session is active
+      assert is_nil(second_session.end_time)
+      assert second_session.task_id == second_task.id
+
+      # Reload the first session to see if it was interrupted
+      updated_first_session = Tracking.get_time_session!(first_session.id)
+
+      # Verify the first session was interrupted
+      refute is_nil(updated_first_session.end_time)
+      assert updated_first_session.interrupted_by_task_id == second_task.id
+
+      # Verify there is only one active session
+      active_session = Tracking.get_active_time_session()
+      assert active_session.id == second_session.id
+    end
   end
 end
