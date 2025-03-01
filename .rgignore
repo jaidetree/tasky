@@ -1,4 +1,5 @@
 .direnv
+.lexical
 frontend/build
 frontend/lib
 backend/deps

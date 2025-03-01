@@ -7,9 +7,20 @@
     <.live_title default="Tasky" suffix=" · Phoenix Framework">
       {assigns[:page_title]}
     </.live_title>
-    <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
-    <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}>
-    </script>
+    <%= if Mix.env() == :dev do %>
+      <script type="module" src="http://localhost:5173/@vite/client">
+      </script>
+      <script type="module" src="http://localhost:5173/src/main.jsx">
+      </script>
+    <% else %>
+      <%= if manifest_path = Phoenix.Template.static_path("/assets/manifest.json") do %>
+        {# Render all CSS files, including imported ones}
+        {render_css_from_manifest(manifest_path, "src/main.jsx")}
+
+        {# Render all JS chunks in the correct order}
+        {render_js_from_manifest(manifest_path, "src/main.jsx")}
+      <% end %>
+    <% end %>
   </head>
   <body class="bg-white">
     {@inner_content}

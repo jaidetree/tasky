@@ -20,10 +20,16 @@ defmodule TaskyWeb.Endpoint do
   # You should set gzip to true if you are running phx.digest
   # when deploying your static files in production.
   plug Plug.Static,
-    at: "/",
-    from: :tasky,
+    at: "/assets",
+    from: {:tasky, "priv/static/assets"},
     gzip: false,
     only: TaskyWeb.static_paths()
+
+  if Mix.env() == :dev do
+    plug CORSPlug,
+      origin: ["http://localhost:5173"],
+      headers: ["Accept", "Content-Type", "X-CSRF-Token", "X-Requested-With"]
+  end
 
   # Code reloading can be explicitly enabled under the
   # :code_reloader configuration of your endpoint.

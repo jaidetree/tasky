@@ -77,6 +77,9 @@ defmodule TaskyWeb do
 
       # Include general helpers for rendering HTML
       unquote(html_helpers())
+
+      # Include helpers for working with frontend vite manifest files
+      import TaskyWeb.ManifestHelper
     end
   end
 

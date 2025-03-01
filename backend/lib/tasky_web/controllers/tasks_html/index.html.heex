@@ -1,0 +1,54 @@
+<h1 class="text-2xl font-bold mb-6">Tasks</h1>
+
+<div id="tasks-container" data-tasks={Jason.encode!(@tasks)}>
+  <div class="overflow-x-auto bg-white shadow-md rounded-lg">
+    <table class="min-w-full table-auto">
+      <thead class="bg-gray-100">
+        <tr>
+          <th class="py-3 px-4 text-left">Title</th>
+          <th class="py-3 px-4 text-left">Estimated Time</th>
+          <th class="py-3 px-4 text-left">Tracked Time</th>
+          <th class="py-3 px-4 text-left">Due Date</th>
+          <th class="py-3 px-4 text-left">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <%= for task <- @tasks do %>
+          <tr class={completed_class(task)} data-task-id={task.id}>
+            <td class="py-3 px-4 border-b">
+              <button onClick="openSidebarHandler" value={task.id}>{task.title}</button>
+            </td>
+            <td class="py-3 px-4 border-b">{format_minutes(task.estimated_time)}</td>
+            <td class="py-3 px-4 border-b">
+              {tracked_time(task)}
+              <button
+                data-task-id={task.id}
+                class="start-timer ml-2 text-sm bg-green-500 hover:bg-green-600 text-white py-1 px-2 rounded"
+              >
+                Start
+              </button>
+            </td>
+            <td class="py-3 px-4 border-b">{format_date(task.due_date)}</td>
+            <td class="py-3 px-4 border-b">
+              <%= if task.completed_at do %>
+                <span class="py-1 px-2 bg-green-100 text-green-800 rounded-full text-xs">
+                  Completed
+                </span>
+              <% else %>
+                <span class="py-1 px-2 bg-yellow-100 text-yellow-800 rounded-full text-xs">
+                  In Progress
+                </span>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ReScript enhancement will be mounted here -->
+<div id="sidebar-root"></div>
+
+<script type="module" src={~p"/assets/js/tasks_index.js"}>
+</script>

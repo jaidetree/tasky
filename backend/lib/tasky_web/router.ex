@@ -17,7 +17,7 @@ defmodule TaskyWeb.Router do
   scope "/", TaskyWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
+    get "/", TasksController, :index
   end
 
   # Other scopes may use custom stacks.
