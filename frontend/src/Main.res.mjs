@@ -5,6 +5,9 @@ import * as Preact from "preact";
 import * as Caml_option from "rescript/lib/es6/caml_option.js";
 import * as JsxRuntime from "preact/jsx-runtime";
 
+import 'vite/modulepreload-polyfill'
+;
+
 import './index.css'
 ;
 

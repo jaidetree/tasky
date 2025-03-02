@@ -64,6 +64,9 @@ defmodule TaskyWeb do
       use Phoenix.LiveComponent
 
       unquote(html_helpers())
+
+      # Include helpers for working with frontend vite manifest files
+      import TaskyWeb.Helpers.ManifestHelper
     end
   end
 
@@ -79,7 +82,7 @@ defmodule TaskyWeb do
       unquote(html_helpers())
 
       # Include helpers for working with frontend vite manifest files
-      import TaskyWeb.ManifestHelper
+      import TaskyWeb.Helpers.ManifestHelper
     end
   end
 

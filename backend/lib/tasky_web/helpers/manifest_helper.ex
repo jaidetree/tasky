@@ -1,20 +1,10 @@
-defmodule TaksyWeb.ManifestHelper do
+# /backend/lib/tasky_web/helpers/manifest_helper.ex
+defmodule TaskyWeb.Helpers.ManifestHelper do
   @moduledoc """
-  Helper functions for working with the Vite manifest.json file
+  Helper functions for working with the Vite manifest.json file.
+  This module is deliberately independent of other TaskyWeb modules
+  to avoid circular dependencies.
   """
-
-  # Import for the `raw` function
-  import Phoenix.HTML
-
-  @doc """
-  Returns the path to the specified entrypoint from the Vite manifest.
-  """
-  def entrypoint_from_manifest(manifest_path, entrypoint) do
-    manifest_path
-    |> read_manifest()
-    |> get_entrypoint_path(entrypoint)
-    |> prefix_asset_path()
-  end
 
   @doc """
   Renders all CSS files associated with an entrypoint, including imports.
@@ -27,7 +17,10 @@ defmodule TaksyWeb.ManifestHelper do
       %{"css" => css_files} when is_list(css_files) ->
         css_files
         |> Enum.map(fn css_file ->
-          raw("<link rel=\"stylesheet\" href=\"/assets/#{css_file}\">")
+          # Use Phoenix.HTML.raw directly, not imported
+          Phoenix.HTML.raw(
+            "<link rel=\"stylesheet\" href=\"#{manifest_path |> Path.dirname()}/#{css_file}\">"
+          )
         end)
 
       _ ->
@@ -49,7 +42,9 @@ defmodule TaksyWeb.ManifestHelper do
           for import_file <- imports do
             case manifest[import_file] do
               %{"file" => chunk_file} ->
-                raw("<script type=\"module\" defer src=\"/assets/#{chunk_file}\"></script>")
+                Phoenix.HTML.raw(
+                  "<script type=\"module\" defer src=\"#{manifest_path |> Path.dirname()}/#{chunk_file}\"></script>"
+                )
 
               _ ->
                 ""
@@ -58,12 +53,18 @@ defmodule TaksyWeb.ManifestHelper do
 
         # Then render the main file
         main_tag =
-          raw("<script type=\"module\" defer src=\"/assets/#{file}\"></script>")
+          Phoenix.HTML.raw(
+            "<script type=\"module\" defer src=\"#{manifest_path |> Path.dirname()}/#{file}\"></script>"
+          )
 
         import_tags ++ [main_tag]
 
       %{"file" => file} ->
-        [raw("<script type=\"module\" defer src=\"/assets/#{file}\"></script>")]
+        [
+          Phoenix.HTML.raw(
+            "<script type=\"module\" defer src=\"#{manifest_path |> Path.dirname()}/#{file}\"></script>"
+          )
+        ]
 
       _ ->
         []
@@ -71,21 +72,17 @@ defmodule TaksyWeb.ManifestHelper do
   end
 
   defp read_manifest(manifest_path) do
-    manifest_path
-    |> File.read!()
-    |> Jason.decode!()
+    priv_static_path = Path.join(:code.priv_dir(:tasky), "static#{manifest_path}")
+
+    if File.exists?(priv_static_path) do
+      priv_static_path
+      |> File.read!()
+      |> Jason.decode!()
+    else
+      %{}
+    end
   rescue
     _ -> %{}
   end
-
-  defp get_entrypoint_path(manifest, entrypoint) do
-    case manifest[entrypoint] do
-      %{"file" => file} -> file
-      _ -> entrypoint
-    end
-  end
-
-  defp prefix_asset_path(path) do
-    "/assets/#{path}"
-  end
 end
+

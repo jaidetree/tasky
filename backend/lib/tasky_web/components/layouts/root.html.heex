@@ -8,17 +8,18 @@
       {assigns[:page_title]}
     </.live_title>
     <%= if Mix.env() == :dev do %>
-      <script type="module" src="http://localhost:5173/@vite/client">
+      <% vite_server = "#{@conn.scheme}://#{@conn.host}:5173" %>
+      <script type="module" src={"#{vite_server}/@vite/client"}>
       </script>
-      <script type="module" src="http://localhost:5173/src/main.jsx">
+      <script type="module" src={"#{vite_server}/src/Main.res.mjs"}>
       </script>
     <% else %>
-      <%= if manifest_path = Phoenix.Template.static_path("/assets/manifest.json") do %>
+      <%= if manifest_path = TaskyWeb.Endpoint.static_path("/assets/.vite/manifest.json") do %>
         {# Render all CSS files, including imported ones}
-        {render_css_from_manifest(manifest_path, "src/main.jsx")}
+        {render_css_from_manifest(manifest_path, "src/Main.res.mjs")}
 
         {# Render all JS chunks in the correct order}
-        {render_js_from_manifest(manifest_path, "src/main.jsx")}
+        {render_js_from_manifest(manifest_path, "src/Main.res.mjs")}
       <% end %>
     <% end %>
   </head>
