@@ -1,7 +1,7 @@
-<header class="px-4 sm:px-6 lg:px-8"></header>
-<main class="px-4 py-20 sm:px-6 lg:px-8">
-  <div class="mx-auto max-w-2xl">
+<main class="flex flex-row items-stretch min-h-screen">
+  <div class="max-w-4xl flex-grow mx-auto px-4 py-20 overflow-auto">
     <.flash_group flash={@flash} />
     {@inner_content}
   </div>
+  <div id="sidebar-root" class="w-[20rem] bg-gray-200 dark:bg-slate-700/20 p-4"></div>
 </main>

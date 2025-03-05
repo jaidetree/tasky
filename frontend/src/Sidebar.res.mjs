@@ -2,11 +2,14 @@
 
 import * as JsxRuntime from "preact/jsx-runtime";
 
-function App(props) {
-  return JsxRuntime.jsx("div", {});
+function Sidebar(props) {
+  return JsxRuntime.jsx("div", {
+              children: "It Works",
+              className: ""
+            });
 }
 
-var make = App;
+var make = Sidebar;
 
 export {
   make ,
