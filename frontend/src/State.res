@@ -1,6 +1,8 @@
 open Preact
 open Task
 
+let actionSignal: Signal.t<option<'action>> = Signal.make(None)
+
 module TaskFSM = {
   type state =
     | Inactive
@@ -26,11 +28,8 @@ module TaskFSM = {
   let actionSignal: Signal.t<action> = Signal.make(Init)
   let stateSignal: Signal.t<state> = Signal.make(Inactive)
 
-  let transitionSignal: Signal.t<transition> = Signal.computed(() => {
-    let action = actionSignal->Signal.get
-    let prevState = stateSignal->Signal.peek
-
-    let nextState = switch (prevState, action) {
+  let reduce = (prevState: state, action: action): state => {
+    switch (prevState, action) {
     | (_, Init) => prevState
     | (Inactive, Fetch(taskId)) => Fetching(Task.fetchTask(taskId))
     | (Fetching(_), Fetched(task)) => Idle(task)
@@ -64,13 +63,7 @@ module TaskFSM = {
     | (Inactive, _) => prevState
     | (_, _) => prevState
     }
-
-    if prevState !== nextState {
-      stateSignal->Signal.set(nextState)
-    }
-
-    {next: nextState, prev: prevState, action}
-  })
+  }
 
   let dispatch = (action: action): unit => {
     actionSignal->Signal.set(action)
@@ -99,11 +92,8 @@ module NewTaskFSM = {
   let actionSignal: Signal.t<action> = Signal.make(Init)
   let stateSignal: Signal.t<state> = Signal.make(Inactive)
 
-  let transitionSignal: Signal.t<transition> = Signal.computed(() => {
-    let action = actionSignal->Signal.get
-    let prevState = stateSignal->Signal.peek
-
-    let nextState = switch (prevState, action) {
+  let reduce = (prevState: state, action: action): state => {
+    switch (prevState, action) {
     | (_, Init) => prevState
     | (Inactive, NewTask) =>
       Active({
@@ -134,63 +124,89 @@ module NewTaskFSM = {
     | (Active(_), Saved(_)) => prevState
     | (Saving(_), _) => prevState
     }
-
-    if prevState !== nextState {
-      stateSignal->Signal.set(nextState)
-    }
-
-    {next: nextState, prev: prevState, action}
-  })
-
-  let dispatch = (action: action): unit => {
-    actionSignal->Signal.set(action)
   }
 }
 
 module AppFSM = {
   type state =
     | Idle
-    | Task(string)
-    | New
+    | Task(TaskFSM.state)
+    | CreatingTask(NewTaskFSM.state)
 
-  // Separate into appAction and taskAction
   type action =
     | Init
     | OpenTask(string)
     | NewTask
+    | NewTaskFSM(NewTaskFSM.action)
+    | TaskFSM(TaskFSM.action)
 
   type transition = {
     prev: state,
     next: state,
     action: action,
+    created_at: float,
   }
 
   let actionSignal: Signal.t<action> = Signal.make(Init)
   let stateSignal: Signal.t<state> = Signal.make(Idle)
 
-  let transitionSignal: Signal.t<transition> = Signal.computed(() => {
+  let reduce = (prevState: state, action: action): state => {
+    switch (prevState, action) {
+    | (_, Init) => prevState
+
+    // Task view
+    | (Idle, OpenTask(taskId)) => Task(TaskFSM.reduce(Inactive, Fetch(taskId)))
+    | (Task(prevState), TaskFSM(action)) => Task(TaskFSM.reduce(prevState, action))
+    | (Task(_prevId), OpenTask(nextId)) => Task(TaskFSM.reduce(Inactive, Fetch(nextId)))
+
+    // New Task View
+    | (_, NewTask) => CreatingTask(NewTaskFSM.reduce(Inactive, NewTask))
+    | (CreatingTask(prevState), NewTaskFSM(action)) =>
+      CreatingTask(NewTaskFSM.reduce(prevState, action))
+
+    // Open task view while creating task
+    | (CreatingTask(_), OpenTask(taskId)) => Task(TaskFSM.reduce(Inactive, Fetch(taskId)))
+
+    // Corner cases
+    | (_, NewTaskFSM(_)) => prevState
+    | (_, TaskFSM(_)) => prevState
+    }
+  }
+
+  let transitionSignal: Signal.t<transition> = Signal.make({
+    next: Idle,
+    prev: Idle,
+    action: Init,
+    created_at: DateTime.now(),
+  })
+
+  Signal.effect(() => {
     let action = actionSignal->Signal.get
     let prevState = stateSignal->Signal.peek
-
-    let nextState = switch (prevState, action) {
-    | (_, Init) => prevState
-    | (Idle, OpenTask(task_id)) => Task(task_id)
-    | (_, NewTask) => {
-        NewTaskFSM.dispatch(NewTask)
-        New
-      }
-    | (Task(_prevId), OpenTask(nextId)) => Task(nextId)
-    | (New, OpenTask(task_id)) => Task(task_id)
-    }
+    let nextState = reduce(prevState, action)
 
     if prevState !== nextState {
       stateSignal->Signal.set(nextState)
+      transitionSignal->Signal.set({
+        next: nextState,
+        prev: prevState,
+        action,
+        created_at: DateTime.now(),
+      })
     }
 
-    {next: nextState, prev: prevState, action}
+    None
   })
 
   let dispatch = (action: action): unit => {
     actionSignal->Signal.set(action)
   }
 }
+
+Signal.effect(() => {
+  let transition = AppFSM.transitionSignal->Signal.get
+
+  Js.Console.log2("transition", transition)
+
+  None
+})
