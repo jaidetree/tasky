@@ -1,7 +1,34 @@
 open Preact
 open Task
 
-let actionSignal: Signal.t<option<'action>> = Signal.make(None)
+module Actions = {
+  module Task = {
+    type action =
+      | Init
+      | Open(string)
+      | Fetched(task)
+      | ClockIn
+      | ClockOut
+      | UpdateTask(task)
+  }
+  module NewTask = {
+    type action =
+      | Init
+      | Create
+      | Update(task)
+      | Save
+      | Saved(task)
+  }
+
+  module App = {
+    type action =
+      | Init
+      | NewTask(NewTask.action)
+      | OpenTask(Task.action)
+  }
+}
+
+let actionSignal: Signal.t<Actions.App.action> = Signal.make(Actions.App.Init)
 
 module TaskFSM = {
   type state =
@@ -11,13 +38,7 @@ module TaskFSM = {
     | Idle(task)
     | Running(task, session)
 
-  type action =
-    | Init
-    | Fetch(string)
-    | Fetched(task)
-    | ClockIn
-    | ClockOut
-    | UpdateTask(task)
+  type action = Actions.Task.action
 
   type transition = {
     prev: state,
@@ -25,13 +46,12 @@ module TaskFSM = {
     action: action,
   }
 
-  let actionSignal: Signal.t<action> = Signal.make(Init)
   let stateSignal: Signal.t<state> = Signal.make(Inactive)
 
   let reduce = (prevState: state, action: action): state => {
     switch (prevState, action) {
     | (_, Init) => prevState
-    | (Inactive, Fetch(taskId)) => Fetching(Task.fetchTask(taskId))
+    | (Inactive, Open(taskId)) => Fetching(Task.fetchTask(taskId))
     | (Fetching(_), Fetched(task)) => Idle(task)
     | (Idle(task), ClockIn) =>
       Running(
@@ -66,7 +86,7 @@ module TaskFSM = {
   }
 
   let dispatch = (action: action): unit => {
-    actionSignal->Signal.set(action)
+    actionSignal->Signal.set(Actions.App.OpenTask(action))
   }
 }
 
@@ -76,12 +96,7 @@ module NewTaskFSM = {
     | Active(task)
     | Saving(promise<task>)
 
-  type action =
-    | Init
-    | NewTask
-    | Update(task)
-    | Save
-    | Saved(task)
+  type action = Actions.NewTask.action
 
   type transition = {
     prev: state,
@@ -89,13 +104,12 @@ module NewTaskFSM = {
     action: action,
   }
 
-  let actionSignal: Signal.t<action> = Signal.make(Init)
   let stateSignal: Signal.t<state> = Signal.make(Inactive)
 
   let reduce = (prevState: state, action: action): state => {
     switch (prevState, action) {
     | (_, Init) => prevState
-    | (Inactive, NewTask) =>
+    | (Inactive, Create) =>
       Active({
         id: "",
         name: "",
@@ -112,14 +126,14 @@ module NewTaskFSM = {
 
         Saving(
           promise->then(task => {
-            actionSignal->Signal.set(Saved(task))
+            actionSignal->Signal.set(Actions.App.NewTask(Actions.NewTask.Saved(task)))
 
             resolve(task)
           }),
         )
       }
     | (Saving(_), Saved(_)) => Inactive
-    | (Active(_task), NewTask) => prevState
+    | (Active(_task), Create) => prevState
     | (Inactive, _) => prevState
     | (Active(_), Saved(_)) => prevState
     | (Saving(_), _) => prevState
@@ -131,14 +145,9 @@ module AppFSM = {
   type state =
     | Idle
     | Task(TaskFSM.state)
-    | CreatingTask(NewTaskFSM.state)
+    | NewTask(NewTaskFSM.state)
 
-  type action =
-    | Init
-    | OpenTask(string)
-    | NewTask
-    | NewTaskFSM(NewTaskFSM.action)
-    | TaskFSM(TaskFSM.action)
+  type action = Actions.App.action
 
   type transition = {
     prev: state,
@@ -147,7 +156,6 @@ module AppFSM = {
     created_at: float,
   }
 
-  let actionSignal: Signal.t<action> = Signal.make(Init)
   let stateSignal: Signal.t<state> = Signal.make(Idle)
 
   let reduce = (prevState: state, action: action): state => {
@@ -155,21 +163,17 @@ module AppFSM = {
     | (_, Init) => prevState
 
     // Task view
-    | (Idle, OpenTask(taskId)) => Task(TaskFSM.reduce(Inactive, Fetch(taskId)))
-    | (Task(prevState), TaskFSM(action)) => Task(TaskFSM.reduce(prevState, action))
-    | (Task(_prevId), OpenTask(nextId)) => Task(TaskFSM.reduce(Inactive, Fetch(nextId)))
+    | (Idle, OpenTask(action)) => Task(TaskFSM.reduce(Inactive, action))
+    | (Task(_prevId), OpenTask(action)) => Task(TaskFSM.reduce(Inactive, action))
 
     // New Task View
-    | (_, NewTask) => CreatingTask(NewTaskFSM.reduce(Inactive, NewTask))
-    | (CreatingTask(prevState), NewTaskFSM(action)) =>
-      CreatingTask(NewTaskFSM.reduce(prevState, action))
+    | (_, NewTask(action)) => NewTask(NewTaskFSM.reduce(Inactive, action))
 
     // Open task view while creating task
-    | (CreatingTask(_), OpenTask(taskId)) => Task(TaskFSM.reduce(Inactive, Fetch(taskId)))
+    | (NewTask(_), OpenTask(action)) => Task(TaskFSM.reduce(TaskFSM.Inactive, action))
 
     // Corner cases
-    | (_, NewTaskFSM(_)) => prevState
-    | (_, TaskFSM(_)) => prevState
+    // _ => prevState
     }
   }
 
@@ -186,12 +190,14 @@ module AppFSM = {
     let nextState = reduce(prevState, action)
 
     if prevState !== nextState {
-      stateSignal->Signal.set(nextState)
-      transitionSignal->Signal.set({
-        next: nextState,
-        prev: prevState,
-        action,
-        created_at: DateTime.now(),
+      Signal.batch(() => {
+        stateSignal->Signal.set(nextState)
+        transitionSignal->Signal.set({
+          next: nextState,
+          prev: prevState,
+          action,
+          created_at: DateTime.now(),
+        })
       })
     }
 

@@ -13,6 +13,6 @@ window["openSidebar"] = (button: Dom.element) => {
   Js.Console.log(button)
 }
 
-window["newTask"] = (button: Dom.element) => {
-  State.AppFSM.dispatch(NewTask)
+window["newTask"] = (_button: Dom.element) => {
+  State.AppFSM.dispatch(NewTask(Create))
 }

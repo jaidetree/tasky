@@ -22,8 +22,11 @@ window.openSidebar = (function (button) {
     console.log(button);
   });
 
-window.newTask = (function (button) {
-    State.AppFSM.dispatch("NewTask");
+window.newTask = (function (_button) {
+    State.AppFSM.dispatch({
+          TAG: "NewTask",
+          _0: "Create"
+        });
   });
 
 export {

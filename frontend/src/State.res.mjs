@@ -5,6 +5,18 @@ import * as DateTime from "./DateTime.res.mjs";
 import * as Belt_Array from "rescript/lib/es6/belt_Array.js";
 import * as Signals from "@preact/signals";
 
+var Task$1 = {};
+
+var NewTask = {};
+
+var App = {};
+
+var Actions = {
+  Task: Task$1,
+  NewTask: NewTask,
+  App: App
+};
+
 var actionSignal = Signals.signal("Init");
 
 var stateSignal = Signals.signal("Inactive");
@@ -21,7 +33,7 @@ function reduce(prevState, action) {
   }
   if (exit === 2) {
     if (typeof prevState !== "object") {
-      if (typeof action !== "object" || action.TAG !== "Fetch") {
+      if (typeof action !== "object" || action.TAG !== "Open") {
         return prevState;
       } else {
         return {
@@ -61,7 +73,7 @@ function reduce(prevState, action) {
             }
           }
           switch (action.TAG) {
-            case "Fetch" :
+            case "Open" :
                 return prevState;
             case "Fetched" :
                 break;
@@ -104,7 +116,7 @@ function reduce(prevState, action) {
             }
           }
           switch (action.TAG) {
-            case "Fetch" :
+            case "Open" :
                 return prevState;
             case "Fetched" :
                 break;
@@ -124,17 +136,17 @@ function reduce(prevState, action) {
 }
 
 function dispatch(action) {
-  actionSignal.value = action;
+  actionSignal.value = {
+    TAG: "OpenTask",
+    _0: action
+  };
 }
 
 var TaskFSM = {
-  actionSignal: actionSignal,
   stateSignal: stateSignal,
   reduce: reduce,
   dispatch: dispatch
 };
-
-var actionSignal$1 = Signals.signal("Init");
 
 var stateSignal$1 = Signals.signal("Inactive");
 
@@ -143,7 +155,7 @@ function reduce$1(prevState, action) {
     return prevState;
   }
   if (typeof prevState !== "object") {
-    if (typeof action !== "object" && action === "NewTask") {
+    if (typeof action !== "object" && action === "Create") {
       return {
               TAG: "Active",
               _0: {
@@ -177,16 +189,19 @@ function reduce$1(prevState, action) {
       return prevState;
     }
   }
-  if (action === "NewTask") {
+  if (action === "Create") {
     return prevState;
   }
   var promise = Task.createTask(prevState._0);
   return {
           TAG: "Saving",
           _0: promise.then(function (task) {
-                actionSignal$1.value = {
-                  TAG: "Saved",
-                  _0: task
+                actionSignal.value = {
+                  TAG: "NewTask",
+                  _0: {
+                    TAG: "Saved",
+                    _0: task
+                  }
                 };
                 return Promise.resolve(task);
               })
@@ -194,108 +209,58 @@ function reduce$1(prevState, action) {
 }
 
 var NewTaskFSM = {
-  actionSignal: actionSignal$1,
   stateSignal: stateSignal$1,
   reduce: reduce$1
 };
-
-var actionSignal$2 = Signals.signal("Init");
 
 var stateSignal$2 = Signals.signal("Idle");
 
 function reduce$2(prevState, action) {
   if (typeof action !== "object") {
-    if (action === "Init") {
-      return prevState;
-    } else {
-      return {
-              TAG: "CreatingTask",
-              _0: reduce$1("Inactive", "NewTask")
-            };
-    }
+    return prevState;
+  } else if (action.TAG === "NewTask") {
+    return {
+            TAG: "NewTask",
+            _0: reduce$1("Inactive", action._0)
+          };
+  } else {
+    return {
+            TAG: "Task",
+            _0: reduce("Inactive", action._0)
+          };
   }
-  if (typeof prevState !== "object") {
-    if (typeof action === "object") {
-      switch (action.TAG) {
-        case "OpenTask" :
-            return {
-                    TAG: "Task",
-                    _0: reduce("Inactive", {
-                          TAG: "Fetch",
-                          _0: action._0
-                        })
-                  };
-        case "NewTaskFSM" :
-        case "TaskFSM" :
-            return prevState;
-        
-      }
-    }
-    
-  } else if (prevState.TAG === "Task") {
-    if (typeof action === "object") {
-      switch (action.TAG) {
-        case "OpenTask" :
-            return {
-                    TAG: "Task",
-                    _0: reduce("Inactive", {
-                          TAG: "Fetch",
-                          _0: action._0
-                        })
-                  };
-        case "NewTaskFSM" :
-            return prevState;
-        case "TaskFSM" :
-            return {
-                    TAG: "Task",
-                    _0: reduce(prevState._0, action._0)
-                  };
-        
-      }
-    }
-    
-  } else if (typeof action === "object") {
-    switch (action.TAG) {
-      case "OpenTask" :
-          return {
-                  TAG: "Task",
-                  _0: reduce("Inactive", {
-                        TAG: "Fetch",
-                        _0: action._0
-                      })
-                };
-      case "NewTaskFSM" :
-          return {
-                  TAG: "CreatingTask",
-                  _0: reduce$1(prevState._0, action._0)
-                };
-      case "TaskFSM" :
-          return prevState;
-      
-    }
-  }
-  
 }
 
 var transitionSignal = Signals.signal({
       prev: "Idle",
       next: "Idle",
-      action: "Init"
+      action: "Init",
+      created_at: DateTime.now()
+    });
+
+Signals.effect(function () {
+      var action = actionSignal.value;
+      var prevState = stateSignal$2.peek();
+      var nextState = reduce$2(prevState, action);
+      if (prevState !== nextState) {
+        Signals.batch(function () {
+              stateSignal$2.value = nextState;
+              transitionSignal.value = {
+                prev: prevState,
+                next: nextState,
+                action: action,
+                created_at: DateTime.now()
+              };
+            });
+      }
+      
     });
 
 function dispatch$1(action) {
-  var prevState = stateSignal$2.peek();
-  var nextState = reduce$2(prevState, action);
-  stateSignal$2.value = nextState;
-  transitionSignal.value = {
-    prev: prevState,
-    next: nextState,
-    action: action
-  };
+  actionSignal.value = action;
 }
 
 var AppFSM = {
-  actionSignal: actionSignal$2,
   stateSignal: stateSignal$2,
   reduce: reduce$2,
   transitionSignal: transitionSignal,
@@ -308,6 +273,8 @@ Signals.effect(function () {
     });
 
 export {
+  Actions ,
+  actionSignal ,
   TaskFSM ,
   NewTaskFSM ,
   AppFSM ,
