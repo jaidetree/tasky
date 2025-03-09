@@ -29,16 +29,9 @@ defmodule TaskyWeb.TasksHTML do
     end
   end
 
-  def get_total_session_time(%{time_sessions: sessions}) when is_list(sessions) do
-    sessions
-    |> Enum.filter(fn session -> session.end_time != nil end)
-    |> Enum.map(fn session ->
-      DateTime.diff(session.end_time, session.start_time, :minute)
-    end)
-    |> Enum.sum()
+  def get_total_session_time(task) do
+    Tasky.Tracking.get_total_minutes_from_task(task)
   end
-
-  def get_total_session_time(_), do: 0
 
   def completed_class(task) do
     if task.completed_at, do: "bg-gray-50", else: ""

@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
-@source "../../backend/lib/tasky_web";
+/* @source "../../backend/lib/tasky_web"; */
+@source "../";
 
 @layer components {
   .btn {

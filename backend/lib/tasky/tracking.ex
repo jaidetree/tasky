@@ -381,4 +381,22 @@ defmodule Tasky.Tracking do
   def get_total_minutes_by_task(task_id) do
     get_total_time_by_task(task_id) / 60
   end
+
+  @doc """
+  Return total minutes from time_sessions that ended
+
+  ## Examples
+
+      iex> get_total_minutes_from_task(get_task_with_sessions!(123))
+      60
+
+  """
+  def get_total_minutes_from_task(task) do
+    task.time_sessions
+    |> Enum.filter(fn session -> session.end_time != nil end)
+    |> Enum.map(fn session ->
+      DateTime.diff(session.end_time, session.start_time, :minute)
+    end)
+    |> Enum.sum()
+  end
 end

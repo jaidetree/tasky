@@ -5,7 +5,7 @@ defmodule TaskyWeb.TaskJSON do
   Renders a list of tasks.
   """
   def index(%{tasks: tasks}) do
-    %{data: for(task <- tasks, do: data(task))}
+    %{tasks: for(task <- tasks, do: data(task))}
   end
 
   @doc """
@@ -26,6 +26,7 @@ defmodule TaskyWeb.TaskJSON do
       created_at: task.inserted_at,
       updated_at: task.updated_at,
       parent_task_id: task.parent_task_id,
+      tracked_time: Tasky.Tracking.get_total_minutes_from_task(task),
       time_sessions: render_time_sessions(task)
     }
   end

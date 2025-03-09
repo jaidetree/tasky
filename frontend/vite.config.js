@@ -16,13 +16,15 @@ export default defineConfig({
     }),
   ],
   build: {
-    manifest: true,
-    assetsDir: resolve(__dirname, "../backend/priv/static/assets"),
-    outDir: resolve(__dirname, "../backend/priv/static/js"),
-    emptyOutDir: true,
-    rollupOptions: {
-      input: "/src/Main.res.mjs",
-    },
+    // manifest: true,
+    // assetsDir: resolve(__dirname, "../backend/priv/static/assets"),
+    // outDir: resolve(__dirname, "../backend/priv/static/js"),
+    // assetsDir: "../public/assets",
+    // outDir: "../public/js",
+    // emptyOutDir: true,
+    // rollupOptions: {
+    //   input: "/src/Main.res.mjs",
+    // },
   },
   server: {
     allowedHosts: true,

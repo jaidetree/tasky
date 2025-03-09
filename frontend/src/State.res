@@ -11,6 +11,7 @@ module Actions = {
       | ClockOut
       | UpdateTask(task)
   }
+
   module NewTask = {
     type action =
       | Init
@@ -20,12 +21,26 @@ module Actions = {
       | Saved(task)
   }
 
+  module Tasks = {
+    type action =
+      | Init
+      | Fetch
+      | Fetched(array<task>)
+  }
+
   module App = {
     type action =
       | Init
       | NewTask(NewTask.action)
       | OpenTask(Task.action)
   }
+}
+
+type transition<'state, 'action> = {
+  prev: 'state,
+  next: 'state,
+  action: 'action,
+  created_at: float,
 }
 
 let actionSignal: Signal.t<Actions.App.action> = Signal.make(Actions.App.Init)
@@ -40,14 +55,6 @@ module TaskFSM = {
 
   type action = Actions.Task.action
 
-  type transition = {
-    prev: state,
-    next: state,
-    action: action,
-  }
-
-  let stateSignal: Signal.t<state> = Signal.make(Inactive)
-
   let reduce = (prevState: state, action: action): state => {
     switch (prevState, action) {
     | (_, Init) => prevState
@@ -58,8 +65,8 @@ module TaskFSM = {
         task,
         {
           id: "",
-          started_at: DateTime.now(),
-          ended_at: None,
+          start_time: DateTime.now(),
+          end_time: None,
           interrupted_by_task_id: None,
           notes: "",
         },
@@ -71,7 +78,7 @@ module TaskFSM = {
           ...task.time_sessions,
           {
             ...session,
-            ended_at: Some(DateTime.now()),
+            end_time: Some(DateTime.now()),
           },
         ],
       })
@@ -98,26 +105,22 @@ module NewTaskFSM = {
 
   type action = Actions.NewTask.action
 
-  type transition = {
-    prev: state,
-    next: state,
-    action: action,
-  }
-
-  let stateSignal: Signal.t<state> = Signal.make(Inactive)
-
   let reduce = (prevState: state, action: action): state => {
     switch (prevState, action) {
     | (_, Init) => prevState
     | (Inactive, Create) =>
       Active({
         id: "",
-        name: "",
+        title: "",
         notes: "",
         parent_task_id: None,
         estimated_time: 0,
         time_sessions: [],
-        tasks: [],
+        tracked_time: 0,
+        created_at: "",
+        due_date: None,
+        completed_at: None,
+        updated_at: None,
       })
     | (Active(_task), Update(task)) => Active(task)
     | (Active(task), Save) => {
@@ -141,6 +144,72 @@ module NewTaskFSM = {
   }
 }
 
+module TasksFSM = {
+  type context = {tasks: array<task>}
+
+  type state =
+    | Empty
+    | Loading(promise<array<task>>)
+    | Tasks(context)
+
+  type action = Actions.Tasks.action
+  type transition = transition<state, action>
+
+  let actionSignal: Signal.t<action> = Signal.make(Actions.Tasks.Init)
+
+  let reduce = (prevState: state, action: action): state => {
+    switch (prevState, action) {
+    | (Empty, Fetch) => {
+        open Promise
+        let promise = fetchAll()
+
+        Loading(
+          promise->then(tasks => {
+            actionSignal->Signal.set(Fetched(tasks))
+
+            resolve(tasks)
+          }),
+        )
+      }
+    | (Loading(_), Fetched(tasks)) => Tasks({tasks: tasks})
+    | _ => prevState
+    }
+  }
+
+  let stateSignal: Signal.t<state> = Signal.make(Empty)
+
+  let transitionSignal: Signal.t<transition> = Signal.make({
+    next: Empty,
+    prev: Empty,
+    action: Actions.Tasks.Init,
+    created_at: DateTime.now(),
+  })
+
+  Signal.effect(() => {
+    let action = actionSignal->Signal.get
+    let prevState = stateSignal->Signal.peek
+    let nextState = reduce(prevState, action)
+
+    if prevState !== nextState {
+      Signal.batch(() => {
+        stateSignal->Signal.set(nextState)
+        transitionSignal->Signal.set({
+          next: nextState,
+          prev: prevState,
+          action,
+          created_at: DateTime.now(),
+        })
+      })
+    }
+
+    None
+  })
+
+  let dispatch = (action: action): unit => {
+    actionSignal->Signal.set(action)
+  }
+}
+
 module AppFSM = {
   type state =
     | Idle
@@ -149,11 +218,13 @@ module AppFSM = {
 
   type action = Actions.App.action
 
-  type transition = {
-    prev: state,
-    next: state,
-    action: action,
-    created_at: float,
+  type transition = transition<state, action>
+
+  @spice
+  type serializable = {
+    appState: string,
+    subState: string,
+    data: Js.Json.t,
   }
 
   let stateSignal: Signal.t<state> = Signal.make(Idle)
@@ -180,7 +251,7 @@ module AppFSM = {
   let transitionSignal: Signal.t<transition> = Signal.make({
     next: Idle,
     prev: Idle,
-    action: Init,
+    action: Actions.App.Init,
     created_at: DateTime.now(),
   })
 
@@ -212,6 +283,23 @@ module AppFSM = {
 Signal.effect(() => {
   let transition = AppFSM.transitionSignal->Signal.get
 
+  switch transition.next {
+  | NewTask(state) =>
+    switch state {
+    | Active(task) => {
+        let encodedTask = task->task_encode
+        let dict: AppFSM.serializable = {
+          appState: "NewTask",
+          subState: "Active",
+          data: encodedTask,
+        }
+        let json = dict->AppFSM.serializable_encode->Js.Json.stringify
+        Js.Console.log2("encoded", json)
+      }
+    | _ => ()
+    }
+  | _ => ()
+  }
   Js.Console.log2("transition", transition)
 
   None

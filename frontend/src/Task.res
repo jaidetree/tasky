@@ -3,26 +3,36 @@ open Fetch
 @spice
 type session = {
   id: string,
-  started_at: float,
-  ended_at: option<float>,
-  interrupted_by_task_id: option<string>,
+  start_time: float,
+  end_time: option<float>,
   notes: string,
+  interrupted_by_task_id: option<string>,
 }
 
 @spice
-type rec task = {
+type task = {
   id: string,
-  name: string,
+  title: string,
   notes: string,
-  parent_task_id: option<string>,
   estimated_time: int,
+  due_date: option<string>,
+  completed_at: option<string>,
+  created_at: string,
+  updated_at: option<string>,
+  parent_task_id: option<string>,
+  tracked_time: int,
   time_sessions: array<session>,
-  tasks: array<task>,
 }
+
+@spice
+type tasks = array<task>
+
+@spice
+type tasksList = {tasks: tasks}
 
 let createTask: task => promise<task> = async task => {
   let response = await fetch(
-    "/api/tasks.json",
+    "/api/tasks",
     {
       "body": task->task_encode,
       "method": "POST",
@@ -38,7 +48,7 @@ let createTask: task => promise<task> = async task => {
 
 let fetchTask: string => promise<task> = async taskId => {
   let response = await fetch(
-    `/api/tasks/${taskId}.json`,
+    `/api/tasks/${taskId}`,
     {
       "method": "GET",
       "headers": {
@@ -50,4 +60,22 @@ let fetchTask: string => promise<task> = async taskId => {
   let decoded = json->task_decode
 
   decoded->Result.getExn
+}
+
+let fetchAll: unit => promise<tasks> = async () => {
+  let response = await fetch(
+    `/api/tasks`,
+    {
+      "method": "GET",
+      "headers": {
+        "Content-Type": "json",
+      },
+    },
+  )
+  let json = await response->Fetch.json
+  let decoded = json->tasksList_decode
+  let {tasks} = decoded->Result.getExn
+
+  Js.Console.log2("tasks", tasks)
+  tasks
 }
