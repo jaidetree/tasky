@@ -399,4 +399,45 @@ defmodule Tasky.Tracking do
     end)
     |> Enum.sum()
   end
+
+  @doc """
+  Return task_params with estimated_time in minutes from a map with hours and minutes
+
+  ## Examples
+
+      iex> normalize_estimated_time(%{"estimated_time" => {
+        "hours" => 1,
+        "minutes" => 20,
+      }})
+      80
+
+  """
+  def normalize_estimated_time(task_params) do
+    case task_params do
+      %{"estimated_time_map" => %{"hours" => hours, "minutes" => minutes}}
+      when is_binary(hours) and is_binary(minutes) ->
+        hours_int = String.to_integer(hours)
+        minutes_int = String.to_integer(minutes)
+        total_minutes = minutes_int + hours_int * 60
+        Map.put(task_params, "estimated_time", total_minutes)
+
+      _ ->
+        task_params
+    end
+  end
+
+  @doc """
+  Calculate a tuple splitting up the hours and minutes of estimated time
+
+  ## Examples
+
+      iex> estimated_time_hours_minutes(task)
+      {1, 20}
+
+  """
+  def estimated_time_hours_minutes(%Task{} = task) do
+    hours = div(task.estimated_time, 60)
+    minutes = rem(task.estimated_time, 60)
+    {hours, minutes}
+  end
 end

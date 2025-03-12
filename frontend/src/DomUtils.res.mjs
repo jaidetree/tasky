@@ -5,8 +5,11 @@ var $$Document = {};
 
 var $$Window = {};
 
+var $$FormData = {};
+
 export {
   $$Document ,
   $$Window ,
+  $$FormData ,
 }
 /* No side effect */

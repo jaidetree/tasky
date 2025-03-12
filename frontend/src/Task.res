@@ -10,11 +10,18 @@ type session = {
 }
 
 @spice
+type estimated_time_map = {
+  hours: int,
+  minutes: int,
+}
+
+@spice
 type task = {
   id: string,
   title: string,
   notes: string,
   estimated_time: int,
+  estimated_time_map: estimated_time_map,
   due_date: option<string>,
   completed_at: option<string>,
   created_at: string,
@@ -30,11 +37,20 @@ type tasks = array<task>
 @spice
 type tasksList = {tasks: tasks}
 
-let createTask: task => promise<task> = async task => {
+@spice
+type draft = {
+  title: string,
+  notes: string,
+  estimated_time_map: estimated_time_map,
+  due_date: option<string>,
+  parent_task_id: option<string>,
+}
+
+let createTask: draft => promise<task> = async task => {
   let response = await fetch(
     "/api/tasks",
     {
-      "body": task->task_encode,
+      "body": task->draft_encode,
       "method": "POST",
       "headers": {
         "Content-Type": "json",

@@ -2,10 +2,8 @@
 
 import * as Task from "./Task.res.mjs";
 import * as Spice from "@greenlabs/ppx-spice/src/rescript/Spice.res.mjs";
-import * as Js_dict from "rescript/lib/es6/js_dict.js";
 import * as DateTime from "./DateTime.res.mjs";
 import * as Belt_Array from "rescript/lib/es6/belt_Array.js";
-import * as Belt_Option from "rescript/lib/es6/belt_Option.js";
 import * as Signals from "@preact/signals";
 
 var Task$1 = {};
@@ -103,6 +101,7 @@ function reduce(prevState, action) {
                         title: task.title,
                         notes: task.notes,
                         estimated_time: task.estimated_time,
+                        estimated_time_map: task.estimated_time_map,
                         due_date: task.due_date,
                         completed_at: task.completed_at,
                         created_at: task.created_at,
@@ -155,6 +154,83 @@ var TaskFSM = {
   dispatch: dispatch
 };
 
+function title(draft, title$1) {
+  return {
+          title: title$1,
+          notes: draft.notes,
+          estimated_time_map: draft.estimated_time_map,
+          due_date: draft.due_date,
+          parent_task_id: draft.parent_task_id
+        };
+}
+
+function estimatedTimeHours(draft, hours) {
+  var init = draft.estimated_time_map;
+  return {
+          title: draft.title,
+          notes: draft.notes,
+          estimated_time_map: {
+            hours: hours,
+            minutes: init.minutes
+          },
+          due_date: draft.due_date,
+          parent_task_id: draft.parent_task_id
+        };
+}
+
+function estimatedTimeMinutes(draft, minutes) {
+  var init = draft.estimated_time_map;
+  return {
+          title: draft.title,
+          notes: draft.notes,
+          estimated_time_map: {
+            hours: init.hours,
+            minutes: minutes
+          },
+          due_date: draft.due_date,
+          parent_task_id: draft.parent_task_id
+        };
+}
+
+function dueDate(draft, due_date) {
+  return {
+          title: draft.title,
+          notes: draft.notes,
+          estimated_time_map: draft.estimated_time_map,
+          due_date: due_date,
+          parent_task_id: draft.parent_task_id
+        };
+}
+
+function parentTask(draft, parent_task_id) {
+  return {
+          title: draft.title,
+          notes: draft.notes,
+          estimated_time_map: draft.estimated_time_map,
+          due_date: draft.due_date,
+          parent_task_id: parent_task_id
+        };
+}
+
+function notes(draft, notes$1) {
+  return {
+          title: draft.title,
+          notes: notes$1,
+          estimated_time_map: draft.estimated_time_map,
+          due_date: draft.due_date,
+          parent_task_id: draft.parent_task_id
+        };
+}
+
+var Reducers = {
+  title: title,
+  estimatedTimeHours: estimatedTimeHours,
+  estimatedTimeMinutes: estimatedTimeMinutes,
+  dueDate: dueDate,
+  parentTask: parentTask,
+  notes: notes
+};
+
 function reduce$1(prevState, action) {
   if (typeof action !== "object" && action === "Init") {
     return prevState;
@@ -164,17 +240,14 @@ function reduce$1(prevState, action) {
       return {
               TAG: "Active",
               _0: {
-                id: "",
                 title: "",
                 notes: "",
-                estimated_time: 0,
+                estimated_time_map: {
+                  hours: 0,
+                  minutes: 20
+                },
                 due_date: undefined,
-                completed_at: undefined,
-                created_at: "",
-                updated_at: undefined,
-                parent_task_id: undefined,
-                tracked_time: 0,
-                time_sessions: []
+                parent_task_id: undefined
               }
             };
     } else {
@@ -188,36 +261,61 @@ function reduce$1(prevState, action) {
       return "Inactive";
     }
   }
-  if (typeof action === "object") {
-    if (action.TAG === "Update") {
-      return {
-              TAG: "Active",
-              _0: action._0
-            };
-    } else {
+  var draft = prevState._0;
+  if (typeof action !== "object") {
+    if (action === "Create") {
       return prevState;
     }
+    var promise = Task.createTask(draft);
+    return {
+            TAG: "Saving",
+            _0: promise.then(function (task) {
+                  actionSignal.value = {
+                    TAG: "NewTask",
+                    _0: {
+                      TAG: "Saved",
+                      _0: task
+                    }
+                  };
+                  return Promise.resolve(task);
+                })
+          };
+  } else {
+    if (action.TAG !== "Update") {
+      return prevState;
+    }
+    var field = action._0;
+    var tmp;
+    switch (field.TAG) {
+      case "Title" :
+          tmp = title(draft, field._0);
+          break;
+      case "EstimateHours" :
+          tmp = estimatedTimeHours(draft, field._0);
+          break;
+      case "EstimateMinutes" :
+          tmp = estimatedTimeMinutes(draft, field._0);
+          break;
+      case "Notes" :
+          tmp = notes(draft, field._0);
+          break;
+      case "ParentTask" :
+          tmp = parentTask(draft, field._0);
+          break;
+      case "DueDate" :
+          tmp = dueDate(draft, field._0);
+          break;
+      
+    }
+    return {
+            TAG: "Active",
+            _0: tmp
+          };
   }
-  if (action === "Create") {
-    return prevState;
-  }
-  var promise = Task.createTask(prevState._0);
-  return {
-          TAG: "Saving",
-          _0: promise.then(function (task) {
-                actionSignal.value = {
-                  TAG: "NewTask",
-                  _0: {
-                    TAG: "Saved",
-                    _0: task
-                  }
-                };
-                return Promise.resolve(task);
-              })
-        };
 }
 
 var NewTaskFSM = {
+  Reducers: Reducers,
   reduce: reduce$1
 };
 
@@ -286,116 +384,77 @@ function dispatch$1(action) {
   actionSignal$1.value = action;
 }
 
+function getTasks() {
+  var state = stateSignal.value;
+  if (typeof state !== "object") {
+    return [];
+  } else if (state.TAG === "Loading") {
+    return [];
+  } else {
+    return state._0.tasks;
+  }
+}
+
 var TasksFSM = {
   actionSignal: actionSignal$1,
   reduce: reduce$2,
   stateSignal: stateSignal,
   transitionSignal: transitionSignal,
-  dispatch: dispatch$1
+  dispatch: dispatch$1,
+  getTasks: getTasks
 };
-
-function serializable_encode(v) {
-  return Js_dict.fromArray(Spice.filterOptional([
-                  [
-                    "appState",
-                    Spice.stringToJson(v.appState)
-                  ],
-                  [
-                    "subState",
-                    Spice.stringToJson(v.subState)
-                  ],
-                  [
-                    "data",
-                    (function (v) {
-                          return v;
-                        })(v.data)
-                  ]
-                ]));
-}
-
-function serializable_decode(v) {
-  if (!Array.isArray(v) && (v === null || typeof v !== "object") && typeof v !== "number" && typeof v !== "string" && typeof v !== "boolean") {
-    return Spice.error(undefined, "Not an object", v);
-  }
-  if (!(typeof v === "object" && !Array.isArray(v))) {
-    return Spice.error(undefined, "Not an object", v);
-  }
-  var match = Belt_Option.map(Js_dict.get(v, "appState"), Spice.stringFromJson);
-  if (match === undefined) {
-    return Spice.error(undefined, "appState missing", v);
-  }
-  if (match.TAG === "Ok") {
-    var match$1 = Belt_Option.map(Js_dict.get(v, "subState"), Spice.stringFromJson);
-    if (match$1 === undefined) {
-      return Spice.error(undefined, "subState missing", v);
-    }
-    if (match$1.TAG === "Ok") {
-      var match$2 = Belt_Option.map(Js_dict.get(v, "data"), (function (v) {
-              return {
-                      TAG: "Ok",
-                      _0: v
-                    };
-            }));
-      if (match$2 === undefined) {
-        return Spice.error(undefined, "data missing", v);
-      }
-      if (match$2.TAG === "Ok") {
-        return {
-                TAG: "Ok",
-                _0: {
-                  appState: match._0,
-                  subState: match$1._0,
-                  data: match$2._0
-                }
-              };
-      }
-      var e = match$2._0;
-      return {
-              TAG: "Error",
-              _0: {
-                path: ".data" + e.path,
-                message: e.message,
-                value: e.value
-              }
-            };
-    }
-    var e$1 = match$1._0;
-    return {
-            TAG: "Error",
-            _0: {
-              path: ".subState" + e$1.path,
-              message: e$1.message,
-              value: e$1.value
-            }
-          };
-  }
-  var e$2 = match._0;
-  return {
-          TAG: "Error",
-          _0: {
-            path: ".appState" + e$2.path,
-            message: e$2.message,
-            value: e$2.value
-          }
-        };
-}
 
 var stateSignal$1 = Signals.signal("Idle");
 
 function reduce$3(prevState, action) {
   if (typeof action !== "object") {
     return prevState;
-  } else if (action.TAG === "NewTask") {
-    return {
-            TAG: "NewTask",
-            _0: reduce$1("Inactive", action._0)
-          };
-  } else {
-    return {
-            TAG: "Task",
-            _0: reduce("Inactive", action._0)
-          };
   }
+  action.TAG === "NewTask";
+  if (typeof prevState !== "object") {
+    if (typeof action === "object") {
+      if (action.TAG === "NewTask") {
+        return {
+                TAG: "NewTask",
+                _0: reduce$1("Inactive", action._0)
+              };
+      } else {
+        return {
+                TAG: "Task",
+                _0: reduce("Inactive", action._0)
+              };
+      }
+    }
+    
+  } else if (prevState.TAG === "Task") {
+    if (typeof action === "object") {
+      if (action.TAG === "NewTask") {
+        return {
+                TAG: "NewTask",
+                _0: reduce$1("Inactive", action._0)
+              };
+      } else {
+        return {
+                TAG: "Task",
+                _0: reduce("Inactive", action._0)
+              };
+      }
+    }
+    
+  } else if (typeof action === "object") {
+    if (action.TAG === "NewTask") {
+      return {
+              TAG: "NewTask",
+              _0: reduce$1(prevState._0, action._0)
+            };
+    } else {
+      return {
+              TAG: "Task",
+              _0: reduce("Inactive", action._0)
+            };
+    }
+  }
+  
 }
 
 var transitionSignal$1 = Signals.signal({
@@ -428,12 +487,236 @@ function dispatch$2(action) {
 }
 
 var AppFSM = {
-  serializable_encode: serializable_encode,
-  serializable_decode: serializable_decode,
   stateSignal: stateSignal$1,
   reduce: reduce$3,
   transitionSignal: transitionSignal$1,
   dispatch: dispatch$2
+};
+
+function newTaskState_encode(v) {
+  if (typeof v !== "object") {
+    return ["Init"];
+  } else {
+    return [
+            "Active",
+            Task.draft_encode(v._0)
+          ];
+  }
+}
+
+function newTaskState_decode(v) {
+  if (!Array.isArray(v) && (v === null || typeof v !== "object") && typeof v !== "number" && typeof v !== "string" && typeof v !== "boolean") {
+    return Spice.error(undefined, "Not a variant", v);
+  }
+  if (!Array.isArray(v)) {
+    return Spice.error(undefined, "Not a variant", v);
+  }
+  if (v.length === 0) {
+    return Spice.error(undefined, "Expected variant, found empty array", v);
+  }
+  var match = Belt_Array.getExn(v, 0);
+  if (!(!Array.isArray(match) && (match === null || typeof match !== "object") && typeof match !== "number" && typeof match !== "string" && typeof match !== "boolean") && typeof match === "string") {
+    switch (match) {
+      case "Active" :
+          if (v.length !== 2) {
+            return Spice.error(undefined, "Invalid number of arguments to variant constructor", v);
+          }
+          var v0 = Task.draft_decode(Belt_Array.getExn(v, 1));
+          if (v0.TAG === "Ok") {
+            return {
+                    TAG: "Ok",
+                    _0: {
+                      TAG: "Active",
+                      _0: v0._0
+                    }
+                  };
+          }
+          var e = v0._0;
+          return {
+                  TAG: "Error",
+                  _0: {
+                    path: "[0]" + e.path,
+                    message: e.message,
+                    value: e.value
+                  }
+                };
+      case "Init" :
+          if (v.length !== 1) {
+            return Spice.error(undefined, "Invalid number of arguments to variant constructor", v);
+          } else {
+            return {
+                    TAG: "Ok",
+                    _0: "Init"
+                  };
+          }
+      default:
+        
+    }
+  }
+  return Spice.error(undefined, "Invalid variant constructor", Belt_Array.getExn(v, 0));
+}
+
+function taskState_encode(v) {
+  if (typeof v !== "object") {
+    return ["Init"];
+  } else {
+    return [
+            "Selected",
+            Spice.stringToJson(v._0)
+          ];
+  }
+}
+
+function taskState_decode(v) {
+  if (!Array.isArray(v) && (v === null || typeof v !== "object") && typeof v !== "number" && typeof v !== "string" && typeof v !== "boolean") {
+    return Spice.error(undefined, "Not a variant", v);
+  }
+  if (!Array.isArray(v)) {
+    return Spice.error(undefined, "Not a variant", v);
+  }
+  if (v.length === 0) {
+    return Spice.error(undefined, "Expected variant, found empty array", v);
+  }
+  var match = Belt_Array.getExn(v, 0);
+  if (!(!Array.isArray(match) && (match === null || typeof match !== "object") && typeof match !== "number" && typeof match !== "string" && typeof match !== "boolean") && typeof match === "string") {
+    switch (match) {
+      case "Init" :
+          if (v.length !== 1) {
+            return Spice.error(undefined, "Invalid number of arguments to variant constructor", v);
+          } else {
+            return {
+                    TAG: "Ok",
+                    _0: "Init"
+                  };
+          }
+      case "Selected" :
+          if (v.length !== 2) {
+            return Spice.error(undefined, "Invalid number of arguments to variant constructor", v);
+          }
+          var v0 = Spice.stringFromJson(Belt_Array.getExn(v, 1));
+          if (v0.TAG === "Ok") {
+            return {
+                    TAG: "Ok",
+                    _0: {
+                      TAG: "Selected",
+                      _0: v0._0
+                    }
+                  };
+          }
+          var e = v0._0;
+          return {
+                  TAG: "Error",
+                  _0: {
+                    path: "[0]" + e.path,
+                    message: e.message,
+                    value: e.value
+                  }
+                };
+      default:
+        
+    }
+  }
+  return Spice.error(undefined, "Invalid variant constructor", Belt_Array.getExn(v, 0));
+}
+
+function t_encode(v) {
+  if (typeof v !== "object") {
+    return ["Idle"];
+  } else if (v.TAG === "Task") {
+    return [
+            "Task",
+            taskState_encode(v._0)
+          ];
+  } else {
+    return [
+            "NewTask",
+            newTaskState_encode(v._0)
+          ];
+  }
+}
+
+function t_decode(v) {
+  if (!Array.isArray(v) && (v === null || typeof v !== "object") && typeof v !== "number" && typeof v !== "string" && typeof v !== "boolean") {
+    return Spice.error(undefined, "Not a variant", v);
+  }
+  if (!Array.isArray(v)) {
+    return Spice.error(undefined, "Not a variant", v);
+  }
+  if (v.length === 0) {
+    return Spice.error(undefined, "Expected variant, found empty array", v);
+  }
+  var match = Belt_Array.getExn(v, 0);
+  if (!(!Array.isArray(match) && (match === null || typeof match !== "object") && typeof match !== "number" && typeof match !== "string" && typeof match !== "boolean") && typeof match === "string") {
+    switch (match) {
+      case "Idle" :
+          if (v.length !== 1) {
+            return Spice.error(undefined, "Invalid number of arguments to variant constructor", v);
+          } else {
+            return {
+                    TAG: "Ok",
+                    _0: "Idle"
+                  };
+          }
+      case "NewTask" :
+          if (v.length !== 2) {
+            return Spice.error(undefined, "Invalid number of arguments to variant constructor", v);
+          }
+          var v0 = newTaskState_decode(Belt_Array.getExn(v, 1));
+          if (v0.TAG === "Ok") {
+            return {
+                    TAG: "Ok",
+                    _0: {
+                      TAG: "NewTask",
+                      _0: v0._0
+                    }
+                  };
+          }
+          var e = v0._0;
+          return {
+                  TAG: "Error",
+                  _0: {
+                    path: "[0]" + e.path,
+                    message: e.message,
+                    value: e.value
+                  }
+                };
+      case "Task" :
+          if (v.length !== 2) {
+            return Spice.error(undefined, "Invalid number of arguments to variant constructor", v);
+          }
+          var v0$1 = taskState_decode(Belt_Array.getExn(v, 1));
+          if (v0$1.TAG === "Ok") {
+            return {
+                    TAG: "Ok",
+                    _0: {
+                      TAG: "Task",
+                      _0: v0$1._0
+                    }
+                  };
+          }
+          var e$1 = v0$1._0;
+          return {
+                  TAG: "Error",
+                  _0: {
+                    path: "[0]" + e$1.path,
+                    message: e$1.message,
+                    value: e$1.value
+                  }
+                };
+      default:
+        
+    }
+  }
+  return Spice.error(undefined, "Invalid variant constructor", Belt_Array.getExn(v, 0));
+}
+
+var Serialize = {
+  newTaskState_encode: newTaskState_encode,
+  newTaskState_decode: newTaskState_decode,
+  taskState_encode: taskState_encode,
+  taskState_decode: taskState_decode,
+  t_encode: t_encode,
+  t_decode: t_decode
 };
 
 Signals.effect(function () {
@@ -442,14 +725,16 @@ Signals.effect(function () {
       if (typeof state === "object" && state.TAG !== "Task") {
         var state$1 = state._0;
         if (typeof state$1 === "object" && state$1.TAG === "Active") {
-          var encodedTask = Task.task_encode(state$1._0);
-          var dict = {
-            appState: "NewTask",
-            subState: "Active",
-            data: encodedTask
+          var data = {
+            TAG: "NewTask",
+            _0: {
+              TAG: "Active",
+              _0: state$1._0
+            }
           };
-          var json = JSON.stringify(serializable_encode(dict));
-          console.log("encoded", json);
+          var encoded = t_encode(data);
+          var json = JSON.stringify(encoded);
+          console.log("json", json);
         }
         
       }
@@ -463,5 +748,6 @@ export {
   NewTaskFSM ,
   TasksFSM ,
   AppFSM ,
+  Serialize ,
 }
 /* actionSignal Not a pure module */

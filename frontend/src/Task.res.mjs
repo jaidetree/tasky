@@ -196,6 +196,65 @@ function session_decode(v) {
         };
 }
 
+function estimated_time_map_encode(v) {
+  return Js_dict.fromArray(Spice.filterOptional([
+                  [
+                    "hours",
+                    Spice.intToJson(v.hours)
+                  ],
+                  [
+                    "minutes",
+                    Spice.intToJson(v.minutes)
+                  ]
+                ]));
+}
+
+function estimated_time_map_decode(v) {
+  if (!Array.isArray(v) && (v === null || typeof v !== "object") && typeof v !== "number" && typeof v !== "string" && typeof v !== "boolean") {
+    return Spice.error(undefined, "Not an object", v);
+  }
+  if (!(typeof v === "object" && !Array.isArray(v))) {
+    return Spice.error(undefined, "Not an object", v);
+  }
+  var match = Belt_Option.map(Js_dict.get(v, "hours"), Spice.intFromJson);
+  if (match === undefined) {
+    return Spice.error(undefined, "hours missing", v);
+  }
+  if (match.TAG === "Ok") {
+    var match$1 = Belt_Option.map(Js_dict.get(v, "minutes"), Spice.intFromJson);
+    if (match$1 === undefined) {
+      return Spice.error(undefined, "minutes missing", v);
+    }
+    if (match$1.TAG === "Ok") {
+      return {
+              TAG: "Ok",
+              _0: {
+                hours: match._0,
+                minutes: match$1._0
+              }
+            };
+    }
+    var e = match$1._0;
+    return {
+            TAG: "Error",
+            _0: {
+              path: ".minutes" + e.path,
+              message: e.message,
+              value: e.value
+            }
+          };
+  }
+  var e$1 = match._0;
+  return {
+          TAG: "Error",
+          _0: {
+            path: ".hours" + e$1.path,
+            message: e$1.message,
+            value: e$1.value
+          }
+        };
+}
+
 function task_encode(v) {
   return Js_dict.fromArray(Spice.filterOptional([
                   [
@@ -213,6 +272,10 @@ function task_encode(v) {
                   [
                     "estimated_time",
                     Spice.intToJson(v.estimated_time)
+                  ],
+                  [
+                    "estimated_time_map",
+                    estimated_time_map_encode(v.estimated_time_map)
                   ],
                   [
                     "due_date",
@@ -286,1123 +349,1155 @@ function task_decode(v) {
         }
         if (match$3.TAG === "Ok") {
           var estimated_time = match$3._0;
-          var match$4 = Belt_Option.map(Js_dict.get(v, "due_date"), (function (extra) {
-                  return Spice.optionFromJson(Spice.stringFromJson, extra);
-                }));
-          if (match$4 !== undefined) {
-            if (match$4.TAG === "Ok") {
-              var due_date = match$4._0;
-              var match$5 = Belt_Option.map(Js_dict.get(v, "completed_at"), (function (extra) {
-                      return Spice.optionFromJson(Spice.stringFromJson, extra);
-                    }));
-              if (match$5 !== undefined) {
-                if (match$5.TAG === "Ok") {
-                  var completed_at = match$5._0;
-                  var match$6 = Belt_Option.map(Js_dict.get(v, "created_at"), Spice.stringFromJson);
-                  if (match$6 === undefined) {
-                    return Spice.error(undefined, "created_at missing", v);
-                  }
+          var match$4 = Belt_Option.map(Js_dict.get(v, "estimated_time_map"), estimated_time_map_decode);
+          if (match$4 === undefined) {
+            return Spice.error(undefined, "estimated_time_map missing", v);
+          }
+          if (match$4.TAG === "Ok") {
+            var estimated_time_map = match$4._0;
+            var match$5 = Belt_Option.map(Js_dict.get(v, "due_date"), (function (extra) {
+                    return Spice.optionFromJson(Spice.stringFromJson, extra);
+                  }));
+            if (match$5 !== undefined) {
+              if (match$5.TAG === "Ok") {
+                var due_date = match$5._0;
+                var match$6 = Belt_Option.map(Js_dict.get(v, "completed_at"), (function (extra) {
+                        return Spice.optionFromJson(Spice.stringFromJson, extra);
+                      }));
+                if (match$6 !== undefined) {
                   if (match$6.TAG === "Ok") {
-                    var created_at = match$6._0;
-                    var match$7 = Belt_Option.map(Js_dict.get(v, "updated_at"), (function (extra) {
-                            return Spice.optionFromJson(Spice.stringFromJson, extra);
-                          }));
-                    if (match$7 !== undefined) {
-                      if (match$7.TAG === "Ok") {
-                        var updated_at = match$7._0;
-                        var match$8 = Belt_Option.map(Js_dict.get(v, "parent_task_id"), (function (extra) {
-                                return Spice.optionFromJson(Spice.stringFromJson, extra);
-                              }));
-                        if (match$8 !== undefined) {
-                          if (match$8.TAG === "Ok") {
-                            var match$9 = Belt_Option.map(Js_dict.get(v, "tracked_time"), Spice.intFromJson);
-                            if (match$9 === undefined) {
-                              return Spice.error(undefined, "tracked_time missing", v);
-                            }
+                    var completed_at = match$6._0;
+                    var match$7 = Belt_Option.map(Js_dict.get(v, "created_at"), Spice.stringFromJson);
+                    if (match$7 === undefined) {
+                      return Spice.error(undefined, "created_at missing", v);
+                    }
+                    if (match$7.TAG === "Ok") {
+                      var created_at = match$7._0;
+                      var match$8 = Belt_Option.map(Js_dict.get(v, "updated_at"), (function (extra) {
+                              return Spice.optionFromJson(Spice.stringFromJson, extra);
+                            }));
+                      if (match$8 !== undefined) {
+                        if (match$8.TAG === "Ok") {
+                          var updated_at = match$8._0;
+                          var match$9 = Belt_Option.map(Js_dict.get(v, "parent_task_id"), (function (extra) {
+                                  return Spice.optionFromJson(Spice.stringFromJson, extra);
+                                }));
+                          if (match$9 !== undefined) {
                             if (match$9.TAG === "Ok") {
-                              var match$10 = Belt_Option.map(Js_dict.get(v, "time_sessions"), (function (extra) {
-                                      return Spice.arrayFromJson(session_decode, extra);
-                                    }));
+                              var match$10 = Belt_Option.map(Js_dict.get(v, "tracked_time"), Spice.intFromJson);
                               if (match$10 === undefined) {
-                                return Spice.error(undefined, "time_sessions missing", v);
+                                return Spice.error(undefined, "tracked_time missing", v);
                               }
                               if (match$10.TAG === "Ok") {
+                                var match$11 = Belt_Option.map(Js_dict.get(v, "time_sessions"), (function (extra) {
+                                        return Spice.arrayFromJson(session_decode, extra);
+                                      }));
+                                if (match$11 === undefined) {
+                                  return Spice.error(undefined, "time_sessions missing", v);
+                                }
+                                if (match$11.TAG === "Ok") {
+                                  return {
+                                          TAG: "Ok",
+                                          _0: {
+                                            id: id,
+                                            title: title,
+                                            notes: notes,
+                                            estimated_time: estimated_time,
+                                            estimated_time_map: estimated_time_map,
+                                            due_date: due_date,
+                                            completed_at: completed_at,
+                                            created_at: created_at,
+                                            updated_at: updated_at,
+                                            parent_task_id: match$9._0,
+                                            tracked_time: match$10._0,
+                                            time_sessions: match$11._0
+                                          }
+                                        };
+                                }
+                                var e = match$11._0;
                                 return {
-                                        TAG: "Ok",
+                                        TAG: "Error",
                                         _0: {
-                                          id: id,
-                                          title: title,
-                                          notes: notes,
-                                          estimated_time: estimated_time,
-                                          due_date: due_date,
-                                          completed_at: completed_at,
-                                          created_at: created_at,
-                                          updated_at: updated_at,
-                                          parent_task_id: match$8._0,
-                                          tracked_time: match$9._0,
-                                          time_sessions: match$10._0
+                                          path: ".time_sessions" + e.path,
+                                          message: e.message,
+                                          value: e.value
                                         }
                                       };
                               }
-                              var e = match$10._0;
+                              var e$1 = match$10._0;
                               return {
                                       TAG: "Error",
                                       _0: {
-                                        path: ".time_sessions" + e.path,
-                                        message: e.message,
-                                        value: e.value
+                                        path: ".tracked_time" + e$1.path,
+                                        message: e$1.message,
+                                        value: e$1.value
                                       }
                                     };
                             }
-                            var e$1 = match$9._0;
+                            var e$2 = match$9._0;
                             return {
                                     TAG: "Error",
                                     _0: {
-                                      path: ".tracked_time" + e$1.path,
-                                      message: e$1.message,
-                                      value: e$1.value
+                                      path: ".parent_task_id" + e$2.path,
+                                      message: e$2.message,
+                                      value: e$2.value
                                     }
                                   };
                           }
-                          var e$2 = match$8._0;
-                          return {
-                                  TAG: "Error",
-                                  _0: {
-                                    path: ".parent_task_id" + e$2.path,
-                                    message: e$2.message,
-                                    value: e$2.value
-                                  }
-                                };
-                        }
-                        var match$11 = Belt_Option.map(Js_dict.get(v, "tracked_time"), Spice.intFromJson);
-                        if (match$11 === undefined) {
-                          return Spice.error(undefined, "tracked_time missing", v);
-                        }
-                        if (match$11.TAG === "Ok") {
-                          var match$12 = Belt_Option.map(Js_dict.get(v, "time_sessions"), (function (extra) {
-                                  return Spice.arrayFromJson(session_decode, extra);
-                                }));
+                          var match$12 = Belt_Option.map(Js_dict.get(v, "tracked_time"), Spice.intFromJson);
                           if (match$12 === undefined) {
-                            return Spice.error(undefined, "time_sessions missing", v);
+                            return Spice.error(undefined, "tracked_time missing", v);
                           }
                           if (match$12.TAG === "Ok") {
+                            var match$13 = Belt_Option.map(Js_dict.get(v, "time_sessions"), (function (extra) {
+                                    return Spice.arrayFromJson(session_decode, extra);
+                                  }));
+                            if (match$13 === undefined) {
+                              return Spice.error(undefined, "time_sessions missing", v);
+                            }
+                            if (match$13.TAG === "Ok") {
+                              return {
+                                      TAG: "Ok",
+                                      _0: {
+                                        id: id,
+                                        title: title,
+                                        notes: notes,
+                                        estimated_time: estimated_time,
+                                        estimated_time_map: estimated_time_map,
+                                        due_date: due_date,
+                                        completed_at: completed_at,
+                                        created_at: created_at,
+                                        updated_at: updated_at,
+                                        parent_task_id: undefined,
+                                        tracked_time: match$12._0,
+                                        time_sessions: match$13._0
+                                      }
+                                    };
+                            }
+                            var e$3 = match$13._0;
                             return {
-                                    TAG: "Ok",
+                                    TAG: "Error",
                                     _0: {
-                                      id: id,
-                                      title: title,
-                                      notes: notes,
-                                      estimated_time: estimated_time,
-                                      due_date: due_date,
-                                      completed_at: completed_at,
-                                      created_at: created_at,
-                                      updated_at: updated_at,
-                                      parent_task_id: undefined,
-                                      tracked_time: match$11._0,
-                                      time_sessions: match$12._0
+                                      path: ".time_sessions" + e$3.path,
+                                      message: e$3.message,
+                                      value: e$3.value
                                     }
                                   };
                           }
-                          var e$3 = match$12._0;
+                          var e$4 = match$12._0;
                           return {
                                   TAG: "Error",
                                   _0: {
-                                    path: ".time_sessions" + e$3.path,
-                                    message: e$3.message,
-                                    value: e$3.value
+                                    path: ".tracked_time" + e$4.path,
+                                    message: e$4.message,
+                                    value: e$4.value
                                   }
                                 };
                         }
-                        var e$4 = match$11._0;
+                        var e$5 = match$8._0;
                         return {
                                 TAG: "Error",
                                 _0: {
-                                  path: ".tracked_time" + e$4.path,
-                                  message: e$4.message,
-                                  value: e$4.value
+                                  path: ".updated_at" + e$5.path,
+                                  message: e$5.message,
+                                  value: e$5.value
                                 }
                               };
                       }
-                      var e$5 = match$7._0;
-                      return {
-                              TAG: "Error",
-                              _0: {
-                                path: ".updated_at" + e$5.path,
-                                message: e$5.message,
-                                value: e$5.value
-                              }
-                            };
-                    }
-                    var match$13 = Belt_Option.map(Js_dict.get(v, "parent_task_id"), (function (extra) {
-                            return Spice.optionFromJson(Spice.stringFromJson, extra);
-                          }));
-                    if (match$13 !== undefined) {
-                      if (match$13.TAG === "Ok") {
-                        var match$14 = Belt_Option.map(Js_dict.get(v, "tracked_time"), Spice.intFromJson);
-                        if (match$14 === undefined) {
-                          return Spice.error(undefined, "tracked_time missing", v);
-                        }
+                      var match$14 = Belt_Option.map(Js_dict.get(v, "parent_task_id"), (function (extra) {
+                              return Spice.optionFromJson(Spice.stringFromJson, extra);
+                            }));
+                      if (match$14 !== undefined) {
                         if (match$14.TAG === "Ok") {
-                          var match$15 = Belt_Option.map(Js_dict.get(v, "time_sessions"), (function (extra) {
-                                  return Spice.arrayFromJson(session_decode, extra);
-                                }));
+                          var match$15 = Belt_Option.map(Js_dict.get(v, "tracked_time"), Spice.intFromJson);
                           if (match$15 === undefined) {
-                            return Spice.error(undefined, "time_sessions missing", v);
+                            return Spice.error(undefined, "tracked_time missing", v);
                           }
                           if (match$15.TAG === "Ok") {
+                            var match$16 = Belt_Option.map(Js_dict.get(v, "time_sessions"), (function (extra) {
+                                    return Spice.arrayFromJson(session_decode, extra);
+                                  }));
+                            if (match$16 === undefined) {
+                              return Spice.error(undefined, "time_sessions missing", v);
+                            }
+                            if (match$16.TAG === "Ok") {
+                              return {
+                                      TAG: "Ok",
+                                      _0: {
+                                        id: id,
+                                        title: title,
+                                        notes: notes,
+                                        estimated_time: estimated_time,
+                                        estimated_time_map: estimated_time_map,
+                                        due_date: due_date,
+                                        completed_at: completed_at,
+                                        created_at: created_at,
+                                        updated_at: undefined,
+                                        parent_task_id: match$14._0,
+                                        tracked_time: match$15._0,
+                                        time_sessions: match$16._0
+                                      }
+                                    };
+                            }
+                            var e$6 = match$16._0;
                             return {
-                                    TAG: "Ok",
+                                    TAG: "Error",
                                     _0: {
-                                      id: id,
-                                      title: title,
-                                      notes: notes,
-                                      estimated_time: estimated_time,
-                                      due_date: due_date,
-                                      completed_at: completed_at,
-                                      created_at: created_at,
-                                      updated_at: undefined,
-                                      parent_task_id: match$13._0,
-                                      tracked_time: match$14._0,
-                                      time_sessions: match$15._0
+                                      path: ".time_sessions" + e$6.path,
+                                      message: e$6.message,
+                                      value: e$6.value
                                     }
                                   };
                           }
-                          var e$6 = match$15._0;
+                          var e$7 = match$15._0;
                           return {
                                   TAG: "Error",
                                   _0: {
-                                    path: ".time_sessions" + e$6.path,
-                                    message: e$6.message,
-                                    value: e$6.value
+                                    path: ".tracked_time" + e$7.path,
+                                    message: e$7.message,
+                                    value: e$7.value
                                   }
                                 };
                         }
-                        var e$7 = match$14._0;
+                        var e$8 = match$14._0;
                         return {
                                 TAG: "Error",
                                 _0: {
-                                  path: ".tracked_time" + e$7.path,
-                                  message: e$7.message,
-                                  value: e$7.value
+                                  path: ".parent_task_id" + e$8.path,
+                                  message: e$8.message,
+                                  value: e$8.value
                                 }
                               };
                       }
-                      var e$8 = match$13._0;
-                      return {
-                              TAG: "Error",
-                              _0: {
-                                path: ".parent_task_id" + e$8.path,
-                                message: e$8.message,
-                                value: e$8.value
-                              }
-                            };
-                    }
-                    var match$16 = Belt_Option.map(Js_dict.get(v, "tracked_time"), Spice.intFromJson);
-                    if (match$16 === undefined) {
-                      return Spice.error(undefined, "tracked_time missing", v);
-                    }
-                    if (match$16.TAG === "Ok") {
-                      var match$17 = Belt_Option.map(Js_dict.get(v, "time_sessions"), (function (extra) {
-                              return Spice.arrayFromJson(session_decode, extra);
-                            }));
+                      var match$17 = Belt_Option.map(Js_dict.get(v, "tracked_time"), Spice.intFromJson);
                       if (match$17 === undefined) {
-                        return Spice.error(undefined, "time_sessions missing", v);
+                        return Spice.error(undefined, "tracked_time missing", v);
                       }
                       if (match$17.TAG === "Ok") {
+                        var match$18 = Belt_Option.map(Js_dict.get(v, "time_sessions"), (function (extra) {
+                                return Spice.arrayFromJson(session_decode, extra);
+                              }));
+                        if (match$18 === undefined) {
+                          return Spice.error(undefined, "time_sessions missing", v);
+                        }
+                        if (match$18.TAG === "Ok") {
+                          return {
+                                  TAG: "Ok",
+                                  _0: {
+                                    id: id,
+                                    title: title,
+                                    notes: notes,
+                                    estimated_time: estimated_time,
+                                    estimated_time_map: estimated_time_map,
+                                    due_date: due_date,
+                                    completed_at: completed_at,
+                                    created_at: created_at,
+                                    updated_at: undefined,
+                                    parent_task_id: undefined,
+                                    tracked_time: match$17._0,
+                                    time_sessions: match$18._0
+                                  }
+                                };
+                        }
+                        var e$9 = match$18._0;
                         return {
-                                TAG: "Ok",
+                                TAG: "Error",
                                 _0: {
-                                  id: id,
-                                  title: title,
-                                  notes: notes,
-                                  estimated_time: estimated_time,
-                                  due_date: due_date,
-                                  completed_at: completed_at,
-                                  created_at: created_at,
-                                  updated_at: undefined,
-                                  parent_task_id: undefined,
-                                  tracked_time: match$16._0,
-                                  time_sessions: match$17._0
+                                  path: ".time_sessions" + e$9.path,
+                                  message: e$9.message,
+                                  value: e$9.value
                                 }
                               };
                       }
-                      var e$9 = match$17._0;
+                      var e$10 = match$17._0;
                       return {
                               TAG: "Error",
                               _0: {
-                                path: ".time_sessions" + e$9.path,
-                                message: e$9.message,
-                                value: e$9.value
+                                path: ".tracked_time" + e$10.path,
+                                message: e$10.message,
+                                value: e$10.value
                               }
                             };
                     }
-                    var e$10 = match$16._0;
+                    var e$11 = match$7._0;
                     return {
                             TAG: "Error",
                             _0: {
-                              path: ".tracked_time" + e$10.path,
-                              message: e$10.message,
-                              value: e$10.value
+                              path: ".created_at" + e$11.path,
+                              message: e$11.message,
+                              value: e$11.value
                             }
                           };
                   }
-                  var e$11 = match$6._0;
+                  var e$12 = match$6._0;
                   return {
                           TAG: "Error",
                           _0: {
-                            path: ".created_at" + e$11.path,
-                            message: e$11.message,
-                            value: e$11.value
+                            path: ".completed_at" + e$12.path,
+                            message: e$12.message,
+                            value: e$12.value
                           }
                         };
                 }
-                var e$12 = match$5._0;
-                return {
-                        TAG: "Error",
-                        _0: {
-                          path: ".completed_at" + e$12.path,
-                          message: e$12.message,
-                          value: e$12.value
-                        }
-                      };
-              }
-              var match$18 = Belt_Option.map(Js_dict.get(v, "created_at"), Spice.stringFromJson);
-              if (match$18 === undefined) {
-                return Spice.error(undefined, "created_at missing", v);
-              }
-              if (match$18.TAG === "Ok") {
-                var created_at$1 = match$18._0;
-                var match$19 = Belt_Option.map(Js_dict.get(v, "updated_at"), (function (extra) {
-                        return Spice.optionFromJson(Spice.stringFromJson, extra);
-                      }));
-                if (match$19 !== undefined) {
-                  if (match$19.TAG === "Ok") {
-                    var updated_at$1 = match$19._0;
-                    var match$20 = Belt_Option.map(Js_dict.get(v, "parent_task_id"), (function (extra) {
-                            return Spice.optionFromJson(Spice.stringFromJson, extra);
-                          }));
-                    if (match$20 !== undefined) {
-                      if (match$20.TAG === "Ok") {
-                        var match$21 = Belt_Option.map(Js_dict.get(v, "tracked_time"), Spice.intFromJson);
-                        if (match$21 === undefined) {
-                          return Spice.error(undefined, "tracked_time missing", v);
-                        }
+                var match$19 = Belt_Option.map(Js_dict.get(v, "created_at"), Spice.stringFromJson);
+                if (match$19 === undefined) {
+                  return Spice.error(undefined, "created_at missing", v);
+                }
+                if (match$19.TAG === "Ok") {
+                  var created_at$1 = match$19._0;
+                  var match$20 = Belt_Option.map(Js_dict.get(v, "updated_at"), (function (extra) {
+                          return Spice.optionFromJson(Spice.stringFromJson, extra);
+                        }));
+                  if (match$20 !== undefined) {
+                    if (match$20.TAG === "Ok") {
+                      var updated_at$1 = match$20._0;
+                      var match$21 = Belt_Option.map(Js_dict.get(v, "parent_task_id"), (function (extra) {
+                              return Spice.optionFromJson(Spice.stringFromJson, extra);
+                            }));
+                      if (match$21 !== undefined) {
                         if (match$21.TAG === "Ok") {
-                          var match$22 = Belt_Option.map(Js_dict.get(v, "time_sessions"), (function (extra) {
-                                  return Spice.arrayFromJson(session_decode, extra);
-                                }));
+                          var match$22 = Belt_Option.map(Js_dict.get(v, "tracked_time"), Spice.intFromJson);
                           if (match$22 === undefined) {
-                            return Spice.error(undefined, "time_sessions missing", v);
+                            return Spice.error(undefined, "tracked_time missing", v);
                           }
                           if (match$22.TAG === "Ok") {
+                            var match$23 = Belt_Option.map(Js_dict.get(v, "time_sessions"), (function (extra) {
+                                    return Spice.arrayFromJson(session_decode, extra);
+                                  }));
+                            if (match$23 === undefined) {
+                              return Spice.error(undefined, "time_sessions missing", v);
+                            }
+                            if (match$23.TAG === "Ok") {
+                              return {
+                                      TAG: "Ok",
+                                      _0: {
+                                        id: id,
+                                        title: title,
+                                        notes: notes,
+                                        estimated_time: estimated_time,
+                                        estimated_time_map: estimated_time_map,
+                                        due_date: due_date,
+                                        completed_at: undefined,
+                                        created_at: created_at$1,
+                                        updated_at: updated_at$1,
+                                        parent_task_id: match$21._0,
+                                        tracked_time: match$22._0,
+                                        time_sessions: match$23._0
+                                      }
+                                    };
+                            }
+                            var e$13 = match$23._0;
                             return {
-                                    TAG: "Ok",
+                                    TAG: "Error",
                                     _0: {
-                                      id: id,
-                                      title: title,
-                                      notes: notes,
-                                      estimated_time: estimated_time,
-                                      due_date: due_date,
-                                      completed_at: undefined,
-                                      created_at: created_at$1,
-                                      updated_at: updated_at$1,
-                                      parent_task_id: match$20._0,
-                                      tracked_time: match$21._0,
-                                      time_sessions: match$22._0
+                                      path: ".time_sessions" + e$13.path,
+                                      message: e$13.message,
+                                      value: e$13.value
                                     }
                                   };
                           }
-                          var e$13 = match$22._0;
+                          var e$14 = match$22._0;
                           return {
                                   TAG: "Error",
                                   _0: {
-                                    path: ".time_sessions" + e$13.path,
-                                    message: e$13.message,
-                                    value: e$13.value
+                                    path: ".tracked_time" + e$14.path,
+                                    message: e$14.message,
+                                    value: e$14.value
                                   }
                                 };
                         }
-                        var e$14 = match$21._0;
+                        var e$15 = match$21._0;
                         return {
                                 TAG: "Error",
                                 _0: {
-                                  path: ".tracked_time" + e$14.path,
-                                  message: e$14.message,
-                                  value: e$14.value
+                                  path: ".parent_task_id" + e$15.path,
+                                  message: e$15.message,
+                                  value: e$15.value
                                 }
                               };
                       }
-                      var e$15 = match$20._0;
-                      return {
-                              TAG: "Error",
-                              _0: {
-                                path: ".parent_task_id" + e$15.path,
-                                message: e$15.message,
-                                value: e$15.value
-                              }
-                            };
-                    }
-                    var match$23 = Belt_Option.map(Js_dict.get(v, "tracked_time"), Spice.intFromJson);
-                    if (match$23 === undefined) {
-                      return Spice.error(undefined, "tracked_time missing", v);
-                    }
-                    if (match$23.TAG === "Ok") {
-                      var match$24 = Belt_Option.map(Js_dict.get(v, "time_sessions"), (function (extra) {
-                              return Spice.arrayFromJson(session_decode, extra);
-                            }));
+                      var match$24 = Belt_Option.map(Js_dict.get(v, "tracked_time"), Spice.intFromJson);
                       if (match$24 === undefined) {
-                        return Spice.error(undefined, "time_sessions missing", v);
+                        return Spice.error(undefined, "tracked_time missing", v);
                       }
                       if (match$24.TAG === "Ok") {
-                        return {
-                                TAG: "Ok",
-                                _0: {
-                                  id: id,
-                                  title: title,
-                                  notes: notes,
-                                  estimated_time: estimated_time,
-                                  due_date: due_date,
-                                  completed_at: undefined,
-                                  created_at: created_at$1,
-                                  updated_at: updated_at$1,
-                                  parent_task_id: undefined,
-                                  tracked_time: match$23._0,
-                                  time_sessions: match$24._0
-                                }
-                              };
-                      }
-                      var e$16 = match$24._0;
-                      return {
-                              TAG: "Error",
-                              _0: {
-                                path: ".time_sessions" + e$16.path,
-                                message: e$16.message,
-                                value: e$16.value
-                              }
-                            };
-                    }
-                    var e$17 = match$23._0;
-                    return {
-                            TAG: "Error",
-                            _0: {
-                              path: ".tracked_time" + e$17.path,
-                              message: e$17.message,
-                              value: e$17.value
-                            }
-                          };
-                  }
-                  var e$18 = match$19._0;
-                  return {
-                          TAG: "Error",
-                          _0: {
-                            path: ".updated_at" + e$18.path,
-                            message: e$18.message,
-                            value: e$18.value
-                          }
-                        };
-                }
-                var match$25 = Belt_Option.map(Js_dict.get(v, "parent_task_id"), (function (extra) {
-                        return Spice.optionFromJson(Spice.stringFromJson, extra);
-                      }));
-                if (match$25 !== undefined) {
-                  if (match$25.TAG === "Ok") {
-                    var match$26 = Belt_Option.map(Js_dict.get(v, "tracked_time"), Spice.intFromJson);
-                    if (match$26 === undefined) {
-                      return Spice.error(undefined, "tracked_time missing", v);
-                    }
-                    if (match$26.TAG === "Ok") {
-                      var match$27 = Belt_Option.map(Js_dict.get(v, "time_sessions"), (function (extra) {
-                              return Spice.arrayFromJson(session_decode, extra);
-                            }));
-                      if (match$27 === undefined) {
-                        return Spice.error(undefined, "time_sessions missing", v);
-                      }
-                      if (match$27.TAG === "Ok") {
-                        return {
-                                TAG: "Ok",
-                                _0: {
-                                  id: id,
-                                  title: title,
-                                  notes: notes,
-                                  estimated_time: estimated_time,
-                                  due_date: due_date,
-                                  completed_at: undefined,
-                                  created_at: created_at$1,
-                                  updated_at: undefined,
-                                  parent_task_id: match$25._0,
-                                  tracked_time: match$26._0,
-                                  time_sessions: match$27._0
-                                }
-                              };
-                      }
-                      var e$19 = match$27._0;
-                      return {
-                              TAG: "Error",
-                              _0: {
-                                path: ".time_sessions" + e$19.path,
-                                message: e$19.message,
-                                value: e$19.value
-                              }
-                            };
-                    }
-                    var e$20 = match$26._0;
-                    return {
-                            TAG: "Error",
-                            _0: {
-                              path: ".tracked_time" + e$20.path,
-                              message: e$20.message,
-                              value: e$20.value
-                            }
-                          };
-                  }
-                  var e$21 = match$25._0;
-                  return {
-                          TAG: "Error",
-                          _0: {
-                            path: ".parent_task_id" + e$21.path,
-                            message: e$21.message,
-                            value: e$21.value
-                          }
-                        };
-                }
-                var match$28 = Belt_Option.map(Js_dict.get(v, "tracked_time"), Spice.intFromJson);
-                if (match$28 === undefined) {
-                  return Spice.error(undefined, "tracked_time missing", v);
-                }
-                if (match$28.TAG === "Ok") {
-                  var match$29 = Belt_Option.map(Js_dict.get(v, "time_sessions"), (function (extra) {
-                          return Spice.arrayFromJson(session_decode, extra);
-                        }));
-                  if (match$29 === undefined) {
-                    return Spice.error(undefined, "time_sessions missing", v);
-                  }
-                  if (match$29.TAG === "Ok") {
-                    return {
-                            TAG: "Ok",
-                            _0: {
-                              id: id,
-                              title: title,
-                              notes: notes,
-                              estimated_time: estimated_time,
-                              due_date: due_date,
-                              completed_at: undefined,
-                              created_at: created_at$1,
-                              updated_at: undefined,
-                              parent_task_id: undefined,
-                              tracked_time: match$28._0,
-                              time_sessions: match$29._0
-                            }
-                          };
-                  }
-                  var e$22 = match$29._0;
-                  return {
-                          TAG: "Error",
-                          _0: {
-                            path: ".time_sessions" + e$22.path,
-                            message: e$22.message,
-                            value: e$22.value
-                          }
-                        };
-                }
-                var e$23 = match$28._0;
-                return {
-                        TAG: "Error",
-                        _0: {
-                          path: ".tracked_time" + e$23.path,
-                          message: e$23.message,
-                          value: e$23.value
+                        var match$25 = Belt_Option.map(Js_dict.get(v, "time_sessions"), (function (extra) {
+                                return Spice.arrayFromJson(session_decode, extra);
+                              }));
+                        if (match$25 === undefined) {
+                          return Spice.error(undefined, "time_sessions missing", v);
                         }
-                      };
-              }
-              var e$24 = match$18._0;
-              return {
-                      TAG: "Error",
-                      _0: {
-                        path: ".created_at" + e$24.path,
-                        message: e$24.message,
-                        value: e$24.value
-                      }
-                    };
-            }
-            var e$25 = match$4._0;
-            return {
-                    TAG: "Error",
-                    _0: {
-                      path: ".due_date" + e$25.path,
-                      message: e$25.message,
-                      value: e$25.value
-                    }
-                  };
-          }
-          var match$30 = Belt_Option.map(Js_dict.get(v, "completed_at"), (function (extra) {
-                  return Spice.optionFromJson(Spice.stringFromJson, extra);
-                }));
-          if (match$30 !== undefined) {
-            if (match$30.TAG === "Ok") {
-              var completed_at$1 = match$30._0;
-              var match$31 = Belt_Option.map(Js_dict.get(v, "created_at"), Spice.stringFromJson);
-              if (match$31 === undefined) {
-                return Spice.error(undefined, "created_at missing", v);
-              }
-              if (match$31.TAG === "Ok") {
-                var created_at$2 = match$31._0;
-                var match$32 = Belt_Option.map(Js_dict.get(v, "updated_at"), (function (extra) {
-                        return Spice.optionFromJson(Spice.stringFromJson, extra);
-                      }));
-                if (match$32 !== undefined) {
-                  if (match$32.TAG === "Ok") {
-                    var updated_at$2 = match$32._0;
-                    var match$33 = Belt_Option.map(Js_dict.get(v, "parent_task_id"), (function (extra) {
-                            return Spice.optionFromJson(Spice.stringFromJson, extra);
-                          }));
-                    if (match$33 !== undefined) {
-                      if (match$33.TAG === "Ok") {
-                        var match$34 = Belt_Option.map(Js_dict.get(v, "tracked_time"), Spice.intFromJson);
-                        if (match$34 === undefined) {
-                          return Spice.error(undefined, "tracked_time missing", v);
-                        }
-                        if (match$34.TAG === "Ok") {
-                          var match$35 = Belt_Option.map(Js_dict.get(v, "time_sessions"), (function (extra) {
-                                  return Spice.arrayFromJson(session_decode, extra);
-                                }));
-                          if (match$35 === undefined) {
-                            return Spice.error(undefined, "time_sessions missing", v);
-                          }
-                          if (match$35.TAG === "Ok") {
-                            return {
-                                    TAG: "Ok",
-                                    _0: {
-                                      id: id,
-                                      title: title,
-                                      notes: notes,
-                                      estimated_time: estimated_time,
-                                      due_date: undefined,
-                                      completed_at: completed_at$1,
-                                      created_at: created_at$2,
-                                      updated_at: updated_at$2,
-                                      parent_task_id: match$33._0,
-                                      tracked_time: match$34._0,
-                                      time_sessions: match$35._0
-                                    }
-                                  };
-                          }
-                          var e$26 = match$35._0;
+                        if (match$25.TAG === "Ok") {
                           return {
-                                  TAG: "Error",
+                                  TAG: "Ok",
                                   _0: {
-                                    path: ".time_sessions" + e$26.path,
-                                    message: e$26.message,
-                                    value: e$26.value
+                                    id: id,
+                                    title: title,
+                                    notes: notes,
+                                    estimated_time: estimated_time,
+                                    estimated_time_map: estimated_time_map,
+                                    due_date: due_date,
+                                    completed_at: undefined,
+                                    created_at: created_at$1,
+                                    updated_at: updated_at$1,
+                                    parent_task_id: undefined,
+                                    tracked_time: match$24._0,
+                                    time_sessions: match$25._0
                                   }
                                 };
                         }
-                        var e$27 = match$34._0;
+                        var e$16 = match$25._0;
                         return {
                                 TAG: "Error",
                                 _0: {
-                                  path: ".tracked_time" + e$27.path,
-                                  message: e$27.message,
-                                  value: e$27.value
+                                  path: ".time_sessions" + e$16.path,
+                                  message: e$16.message,
+                                  value: e$16.value
                                 }
                               };
                       }
-                      var e$28 = match$33._0;
+                      var e$17 = match$24._0;
                       return {
                               TAG: "Error",
                               _0: {
-                                path: ".parent_task_id" + e$28.path,
-                                message: e$28.message,
-                                value: e$28.value
+                                path: ".tracked_time" + e$17.path,
+                                message: e$17.message,
+                                value: e$17.value
                               }
                             };
                     }
-                    var match$36 = Belt_Option.map(Js_dict.get(v, "tracked_time"), Spice.intFromJson);
-                    if (match$36 === undefined) {
-                      return Spice.error(undefined, "tracked_time missing", v);
+                    var e$18 = match$20._0;
+                    return {
+                            TAG: "Error",
+                            _0: {
+                              path: ".updated_at" + e$18.path,
+                              message: e$18.message,
+                              value: e$18.value
+                            }
+                          };
+                  }
+                  var match$26 = Belt_Option.map(Js_dict.get(v, "parent_task_id"), (function (extra) {
+                          return Spice.optionFromJson(Spice.stringFromJson, extra);
+                        }));
+                  if (match$26 !== undefined) {
+                    if (match$26.TAG === "Ok") {
+                      var match$27 = Belt_Option.map(Js_dict.get(v, "tracked_time"), Spice.intFromJson);
+                      if (match$27 === undefined) {
+                        return Spice.error(undefined, "tracked_time missing", v);
+                      }
+                      if (match$27.TAG === "Ok") {
+                        var match$28 = Belt_Option.map(Js_dict.get(v, "time_sessions"), (function (extra) {
+                                return Spice.arrayFromJson(session_decode, extra);
+                              }));
+                        if (match$28 === undefined) {
+                          return Spice.error(undefined, "time_sessions missing", v);
+                        }
+                        if (match$28.TAG === "Ok") {
+                          return {
+                                  TAG: "Ok",
+                                  _0: {
+                                    id: id,
+                                    title: title,
+                                    notes: notes,
+                                    estimated_time: estimated_time,
+                                    estimated_time_map: estimated_time_map,
+                                    due_date: due_date,
+                                    completed_at: undefined,
+                                    created_at: created_at$1,
+                                    updated_at: undefined,
+                                    parent_task_id: match$26._0,
+                                    tracked_time: match$27._0,
+                                    time_sessions: match$28._0
+                                  }
+                                };
+                        }
+                        var e$19 = match$28._0;
+                        return {
+                                TAG: "Error",
+                                _0: {
+                                  path: ".time_sessions" + e$19.path,
+                                  message: e$19.message,
+                                  value: e$19.value
+                                }
+                              };
+                      }
+                      var e$20 = match$27._0;
+                      return {
+                              TAG: "Error",
+                              _0: {
+                                path: ".tracked_time" + e$20.path,
+                                message: e$20.message,
+                                value: e$20.value
+                              }
+                            };
                     }
-                    if (match$36.TAG === "Ok") {
-                      var match$37 = Belt_Option.map(Js_dict.get(v, "time_sessions"), (function (extra) {
-                              return Spice.arrayFromJson(session_decode, extra);
+                    var e$21 = match$26._0;
+                    return {
+                            TAG: "Error",
+                            _0: {
+                              path: ".parent_task_id" + e$21.path,
+                              message: e$21.message,
+                              value: e$21.value
+                            }
+                          };
+                  }
+                  var match$29 = Belt_Option.map(Js_dict.get(v, "tracked_time"), Spice.intFromJson);
+                  if (match$29 === undefined) {
+                    return Spice.error(undefined, "tracked_time missing", v);
+                  }
+                  if (match$29.TAG === "Ok") {
+                    var match$30 = Belt_Option.map(Js_dict.get(v, "time_sessions"), (function (extra) {
+                            return Spice.arrayFromJson(session_decode, extra);
+                          }));
+                    if (match$30 === undefined) {
+                      return Spice.error(undefined, "time_sessions missing", v);
+                    }
+                    if (match$30.TAG === "Ok") {
+                      return {
+                              TAG: "Ok",
+                              _0: {
+                                id: id,
+                                title: title,
+                                notes: notes,
+                                estimated_time: estimated_time,
+                                estimated_time_map: estimated_time_map,
+                                due_date: due_date,
+                                completed_at: undefined,
+                                created_at: created_at$1,
+                                updated_at: undefined,
+                                parent_task_id: undefined,
+                                tracked_time: match$29._0,
+                                time_sessions: match$30._0
+                              }
+                            };
+                    }
+                    var e$22 = match$30._0;
+                    return {
+                            TAG: "Error",
+                            _0: {
+                              path: ".time_sessions" + e$22.path,
+                              message: e$22.message,
+                              value: e$22.value
+                            }
+                          };
+                  }
+                  var e$23 = match$29._0;
+                  return {
+                          TAG: "Error",
+                          _0: {
+                            path: ".tracked_time" + e$23.path,
+                            message: e$23.message,
+                            value: e$23.value
+                          }
+                        };
+                }
+                var e$24 = match$19._0;
+                return {
+                        TAG: "Error",
+                        _0: {
+                          path: ".created_at" + e$24.path,
+                          message: e$24.message,
+                          value: e$24.value
+                        }
+                      };
+              }
+              var e$25 = match$5._0;
+              return {
+                      TAG: "Error",
+                      _0: {
+                        path: ".due_date" + e$25.path,
+                        message: e$25.message,
+                        value: e$25.value
+                      }
+                    };
+            }
+            var match$31 = Belt_Option.map(Js_dict.get(v, "completed_at"), (function (extra) {
+                    return Spice.optionFromJson(Spice.stringFromJson, extra);
+                  }));
+            if (match$31 !== undefined) {
+              if (match$31.TAG === "Ok") {
+                var completed_at$1 = match$31._0;
+                var match$32 = Belt_Option.map(Js_dict.get(v, "created_at"), Spice.stringFromJson);
+                if (match$32 === undefined) {
+                  return Spice.error(undefined, "created_at missing", v);
+                }
+                if (match$32.TAG === "Ok") {
+                  var created_at$2 = match$32._0;
+                  var match$33 = Belt_Option.map(Js_dict.get(v, "updated_at"), (function (extra) {
+                          return Spice.optionFromJson(Spice.stringFromJson, extra);
+                        }));
+                  if (match$33 !== undefined) {
+                    if (match$33.TAG === "Ok") {
+                      var updated_at$2 = match$33._0;
+                      var match$34 = Belt_Option.map(Js_dict.get(v, "parent_task_id"), (function (extra) {
+                              return Spice.optionFromJson(Spice.stringFromJson, extra);
                             }));
+                      if (match$34 !== undefined) {
+                        if (match$34.TAG === "Ok") {
+                          var match$35 = Belt_Option.map(Js_dict.get(v, "tracked_time"), Spice.intFromJson);
+                          if (match$35 === undefined) {
+                            return Spice.error(undefined, "tracked_time missing", v);
+                          }
+                          if (match$35.TAG === "Ok") {
+                            var match$36 = Belt_Option.map(Js_dict.get(v, "time_sessions"), (function (extra) {
+                                    return Spice.arrayFromJson(session_decode, extra);
+                                  }));
+                            if (match$36 === undefined) {
+                              return Spice.error(undefined, "time_sessions missing", v);
+                            }
+                            if (match$36.TAG === "Ok") {
+                              return {
+                                      TAG: "Ok",
+                                      _0: {
+                                        id: id,
+                                        title: title,
+                                        notes: notes,
+                                        estimated_time: estimated_time,
+                                        estimated_time_map: estimated_time_map,
+                                        due_date: undefined,
+                                        completed_at: completed_at$1,
+                                        created_at: created_at$2,
+                                        updated_at: updated_at$2,
+                                        parent_task_id: match$34._0,
+                                        tracked_time: match$35._0,
+                                        time_sessions: match$36._0
+                                      }
+                                    };
+                            }
+                            var e$26 = match$36._0;
+                            return {
+                                    TAG: "Error",
+                                    _0: {
+                                      path: ".time_sessions" + e$26.path,
+                                      message: e$26.message,
+                                      value: e$26.value
+                                    }
+                                  };
+                          }
+                          var e$27 = match$35._0;
+                          return {
+                                  TAG: "Error",
+                                  _0: {
+                                    path: ".tracked_time" + e$27.path,
+                                    message: e$27.message,
+                                    value: e$27.value
+                                  }
+                                };
+                        }
+                        var e$28 = match$34._0;
+                        return {
+                                TAG: "Error",
+                                _0: {
+                                  path: ".parent_task_id" + e$28.path,
+                                  message: e$28.message,
+                                  value: e$28.value
+                                }
+                              };
+                      }
+                      var match$37 = Belt_Option.map(Js_dict.get(v, "tracked_time"), Spice.intFromJson);
                       if (match$37 === undefined) {
-                        return Spice.error(undefined, "time_sessions missing", v);
+                        return Spice.error(undefined, "tracked_time missing", v);
                       }
                       if (match$37.TAG === "Ok") {
+                        var match$38 = Belt_Option.map(Js_dict.get(v, "time_sessions"), (function (extra) {
+                                return Spice.arrayFromJson(session_decode, extra);
+                              }));
+                        if (match$38 === undefined) {
+                          return Spice.error(undefined, "time_sessions missing", v);
+                        }
+                        if (match$38.TAG === "Ok") {
+                          return {
+                                  TAG: "Ok",
+                                  _0: {
+                                    id: id,
+                                    title: title,
+                                    notes: notes,
+                                    estimated_time: estimated_time,
+                                    estimated_time_map: estimated_time_map,
+                                    due_date: undefined,
+                                    completed_at: completed_at$1,
+                                    created_at: created_at$2,
+                                    updated_at: updated_at$2,
+                                    parent_task_id: undefined,
+                                    tracked_time: match$37._0,
+                                    time_sessions: match$38._0
+                                  }
+                                };
+                        }
+                        var e$29 = match$38._0;
                         return {
-                                TAG: "Ok",
+                                TAG: "Error",
                                 _0: {
-                                  id: id,
-                                  title: title,
-                                  notes: notes,
-                                  estimated_time: estimated_time,
-                                  due_date: undefined,
-                                  completed_at: completed_at$1,
-                                  created_at: created_at$2,
-                                  updated_at: updated_at$2,
-                                  parent_task_id: undefined,
-                                  tracked_time: match$36._0,
-                                  time_sessions: match$37._0
+                                  path: ".time_sessions" + e$29.path,
+                                  message: e$29.message,
+                                  value: e$29.value
                                 }
                               };
                       }
-                      var e$29 = match$37._0;
+                      var e$30 = match$37._0;
                       return {
                               TAG: "Error",
                               _0: {
-                                path: ".time_sessions" + e$29.path,
-                                message: e$29.message,
-                                value: e$29.value
+                                path: ".tracked_time" + e$30.path,
+                                message: e$30.message,
+                                value: e$30.value
                               }
                             };
                     }
-                    var e$30 = match$36._0;
+                    var e$31 = match$33._0;
                     return {
                             TAG: "Error",
                             _0: {
-                              path: ".tracked_time" + e$30.path,
-                              message: e$30.message,
-                              value: e$30.value
+                              path: ".updated_at" + e$31.path,
+                              message: e$31.message,
+                              value: e$31.value
                             }
                           };
                   }
-                  var e$31 = match$32._0;
-                  return {
-                          TAG: "Error",
-                          _0: {
-                            path: ".updated_at" + e$31.path,
-                            message: e$31.message,
-                            value: e$31.value
-                          }
-                        };
-                }
-                var match$38 = Belt_Option.map(Js_dict.get(v, "parent_task_id"), (function (extra) {
-                        return Spice.optionFromJson(Spice.stringFromJson, extra);
-                      }));
-                if (match$38 !== undefined) {
-                  if (match$38.TAG === "Ok") {
-                    var match$39 = Belt_Option.map(Js_dict.get(v, "tracked_time"), Spice.intFromJson);
-                    if (match$39 === undefined) {
-                      return Spice.error(undefined, "tracked_time missing", v);
-                    }
+                  var match$39 = Belt_Option.map(Js_dict.get(v, "parent_task_id"), (function (extra) {
+                          return Spice.optionFromJson(Spice.stringFromJson, extra);
+                        }));
+                  if (match$39 !== undefined) {
                     if (match$39.TAG === "Ok") {
-                      var match$40 = Belt_Option.map(Js_dict.get(v, "time_sessions"), (function (extra) {
-                              return Spice.arrayFromJson(session_decode, extra);
-                            }));
+                      var match$40 = Belt_Option.map(Js_dict.get(v, "tracked_time"), Spice.intFromJson);
                       if (match$40 === undefined) {
-                        return Spice.error(undefined, "time_sessions missing", v);
+                        return Spice.error(undefined, "tracked_time missing", v);
                       }
                       if (match$40.TAG === "Ok") {
+                        var match$41 = Belt_Option.map(Js_dict.get(v, "time_sessions"), (function (extra) {
+                                return Spice.arrayFromJson(session_decode, extra);
+                              }));
+                        if (match$41 === undefined) {
+                          return Spice.error(undefined, "time_sessions missing", v);
+                        }
+                        if (match$41.TAG === "Ok") {
+                          return {
+                                  TAG: "Ok",
+                                  _0: {
+                                    id: id,
+                                    title: title,
+                                    notes: notes,
+                                    estimated_time: estimated_time,
+                                    estimated_time_map: estimated_time_map,
+                                    due_date: undefined,
+                                    completed_at: completed_at$1,
+                                    created_at: created_at$2,
+                                    updated_at: undefined,
+                                    parent_task_id: match$39._0,
+                                    tracked_time: match$40._0,
+                                    time_sessions: match$41._0
+                                  }
+                                };
+                        }
+                        var e$32 = match$41._0;
                         return {
-                                TAG: "Ok",
+                                TAG: "Error",
                                 _0: {
-                                  id: id,
-                                  title: title,
-                                  notes: notes,
-                                  estimated_time: estimated_time,
-                                  due_date: undefined,
-                                  completed_at: completed_at$1,
-                                  created_at: created_at$2,
-                                  updated_at: undefined,
-                                  parent_task_id: match$38._0,
-                                  tracked_time: match$39._0,
-                                  time_sessions: match$40._0
+                                  path: ".time_sessions" + e$32.path,
+                                  message: e$32.message,
+                                  value: e$32.value
                                 }
                               };
                       }
-                      var e$32 = match$40._0;
+                      var e$33 = match$40._0;
                       return {
                               TAG: "Error",
                               _0: {
-                                path: ".time_sessions" + e$32.path,
-                                message: e$32.message,
-                                value: e$32.value
+                                path: ".tracked_time" + e$33.path,
+                                message: e$33.message,
+                                value: e$33.value
                               }
                             };
                     }
-                    var e$33 = match$39._0;
+                    var e$34 = match$39._0;
                     return {
                             TAG: "Error",
                             _0: {
-                              path: ".tracked_time" + e$33.path,
-                              message: e$33.message,
-                              value: e$33.value
+                              path: ".parent_task_id" + e$34.path,
+                              message: e$34.message,
+                              value: e$34.value
                             }
                           };
                   }
-                  var e$34 = match$38._0;
-                  return {
-                          TAG: "Error",
-                          _0: {
-                            path: ".parent_task_id" + e$34.path,
-                            message: e$34.message,
-                            value: e$34.value
-                          }
-                        };
-                }
-                var match$41 = Belt_Option.map(Js_dict.get(v, "tracked_time"), Spice.intFromJson);
-                if (match$41 === undefined) {
-                  return Spice.error(undefined, "tracked_time missing", v);
-                }
-                if (match$41.TAG === "Ok") {
-                  var match$42 = Belt_Option.map(Js_dict.get(v, "time_sessions"), (function (extra) {
-                          return Spice.arrayFromJson(session_decode, extra);
-                        }));
+                  var match$42 = Belt_Option.map(Js_dict.get(v, "tracked_time"), Spice.intFromJson);
                   if (match$42 === undefined) {
-                    return Spice.error(undefined, "time_sessions missing", v);
+                    return Spice.error(undefined, "tracked_time missing", v);
                   }
                   if (match$42.TAG === "Ok") {
-                    return {
-                            TAG: "Ok",
-                            _0: {
-                              id: id,
-                              title: title,
-                              notes: notes,
-                              estimated_time: estimated_time,
-                              due_date: undefined,
-                              completed_at: completed_at$1,
-                              created_at: created_at$2,
-                              updated_at: undefined,
-                              parent_task_id: undefined,
-                              tracked_time: match$41._0,
-                              time_sessions: match$42._0
-                            }
-                          };
-                  }
-                  var e$35 = match$42._0;
-                  return {
-                          TAG: "Error",
-                          _0: {
-                            path: ".time_sessions" + e$35.path,
-                            message: e$35.message,
-                            value: e$35.value
-                          }
-                        };
-                }
-                var e$36 = match$41._0;
-                return {
-                        TAG: "Error",
-                        _0: {
-                          path: ".tracked_time" + e$36.path,
-                          message: e$36.message,
-                          value: e$36.value
-                        }
-                      };
-              }
-              var e$37 = match$31._0;
-              return {
-                      TAG: "Error",
-                      _0: {
-                        path: ".created_at" + e$37.path,
-                        message: e$37.message,
-                        value: e$37.value
-                      }
-                    };
-            }
-            var e$38 = match$30._0;
-            return {
-                    TAG: "Error",
-                    _0: {
-                      path: ".completed_at" + e$38.path,
-                      message: e$38.message,
-                      value: e$38.value
+                    var match$43 = Belt_Option.map(Js_dict.get(v, "time_sessions"), (function (extra) {
+                            return Spice.arrayFromJson(session_decode, extra);
+                          }));
+                    if (match$43 === undefined) {
+                      return Spice.error(undefined, "time_sessions missing", v);
                     }
-                  };
-          }
-          var match$43 = Belt_Option.map(Js_dict.get(v, "created_at"), Spice.stringFromJson);
-          if (match$43 === undefined) {
-            return Spice.error(undefined, "created_at missing", v);
-          }
-          if (match$43.TAG === "Ok") {
-            var created_at$3 = match$43._0;
-            var match$44 = Belt_Option.map(Js_dict.get(v, "updated_at"), (function (extra) {
-                    return Spice.optionFromJson(Spice.stringFromJson, extra);
-                  }));
-            if (match$44 !== undefined) {
-              if (match$44.TAG === "Ok") {
-                var updated_at$3 = match$44._0;
-                var match$45 = Belt_Option.map(Js_dict.get(v, "parent_task_id"), (function (extra) {
-                        return Spice.optionFromJson(Spice.stringFromJson, extra);
-                      }));
-                if (match$45 !== undefined) {
-                  if (match$45.TAG === "Ok") {
-                    var match$46 = Belt_Option.map(Js_dict.get(v, "tracked_time"), Spice.intFromJson);
-                    if (match$46 === undefined) {
-                      return Spice.error(undefined, "tracked_time missing", v);
-                    }
-                    if (match$46.TAG === "Ok") {
-                      var match$47 = Belt_Option.map(Js_dict.get(v, "time_sessions"), (function (extra) {
-                              return Spice.arrayFromJson(session_decode, extra);
-                            }));
-                      if (match$47 === undefined) {
-                        return Spice.error(undefined, "time_sessions missing", v);
-                      }
-                      if (match$47.TAG === "Ok") {
-                        return {
-                                TAG: "Ok",
-                                _0: {
-                                  id: id,
-                                  title: title,
-                                  notes: notes,
-                                  estimated_time: estimated_time,
-                                  due_date: undefined,
-                                  completed_at: undefined,
-                                  created_at: created_at$3,
-                                  updated_at: updated_at$3,
-                                  parent_task_id: match$45._0,
-                                  tracked_time: match$46._0,
-                                  time_sessions: match$47._0
-                                }
-                              };
-                      }
-                      var e$39 = match$47._0;
+                    if (match$43.TAG === "Ok") {
                       return {
-                              TAG: "Error",
+                              TAG: "Ok",
                               _0: {
-                                path: ".time_sessions" + e$39.path,
-                                message: e$39.message,
-                                value: e$39.value
+                                id: id,
+                                title: title,
+                                notes: notes,
+                                estimated_time: estimated_time,
+                                estimated_time_map: estimated_time_map,
+                                due_date: undefined,
+                                completed_at: completed_at$1,
+                                created_at: created_at$2,
+                                updated_at: undefined,
+                                parent_task_id: undefined,
+                                tracked_time: match$42._0,
+                                time_sessions: match$43._0
                               }
                             };
                     }
-                    var e$40 = match$46._0;
+                    var e$35 = match$43._0;
                     return {
                             TAG: "Error",
                             _0: {
-                              path: ".tracked_time" + e$40.path,
-                              message: e$40.message,
-                              value: e$40.value
+                              path: ".time_sessions" + e$35.path,
+                              message: e$35.message,
+                              value: e$35.value
                             }
                           };
                   }
-                  var e$41 = match$45._0;
+                  var e$36 = match$42._0;
                   return {
                           TAG: "Error",
                           _0: {
-                            path: ".parent_task_id" + e$41.path,
-                            message: e$41.message,
-                            value: e$41.value
+                            path: ".tracked_time" + e$36.path,
+                            message: e$36.message,
+                            value: e$36.value
                           }
                         };
                 }
-                var match$48 = Belt_Option.map(Js_dict.get(v, "tracked_time"), Spice.intFromJson);
-                if (match$48 === undefined) {
-                  return Spice.error(undefined, "tracked_time missing", v);
-                }
-                if (match$48.TAG === "Ok") {
-                  var match$49 = Belt_Option.map(Js_dict.get(v, "time_sessions"), (function (extra) {
-                          return Spice.arrayFromJson(session_decode, extra);
+                var e$37 = match$32._0;
+                return {
+                        TAG: "Error",
+                        _0: {
+                          path: ".created_at" + e$37.path,
+                          message: e$37.message,
+                          value: e$37.value
+                        }
+                      };
+              }
+              var e$38 = match$31._0;
+              return {
+                      TAG: "Error",
+                      _0: {
+                        path: ".completed_at" + e$38.path,
+                        message: e$38.message,
+                        value: e$38.value
+                      }
+                    };
+            }
+            var match$44 = Belt_Option.map(Js_dict.get(v, "created_at"), Spice.stringFromJson);
+            if (match$44 === undefined) {
+              return Spice.error(undefined, "created_at missing", v);
+            }
+            if (match$44.TAG === "Ok") {
+              var created_at$3 = match$44._0;
+              var match$45 = Belt_Option.map(Js_dict.get(v, "updated_at"), (function (extra) {
+                      return Spice.optionFromJson(Spice.stringFromJson, extra);
+                    }));
+              if (match$45 !== undefined) {
+                if (match$45.TAG === "Ok") {
+                  var updated_at$3 = match$45._0;
+                  var match$46 = Belt_Option.map(Js_dict.get(v, "parent_task_id"), (function (extra) {
+                          return Spice.optionFromJson(Spice.stringFromJson, extra);
                         }));
+                  if (match$46 !== undefined) {
+                    if (match$46.TAG === "Ok") {
+                      var match$47 = Belt_Option.map(Js_dict.get(v, "tracked_time"), Spice.intFromJson);
+                      if (match$47 === undefined) {
+                        return Spice.error(undefined, "tracked_time missing", v);
+                      }
+                      if (match$47.TAG === "Ok") {
+                        var match$48 = Belt_Option.map(Js_dict.get(v, "time_sessions"), (function (extra) {
+                                return Spice.arrayFromJson(session_decode, extra);
+                              }));
+                        if (match$48 === undefined) {
+                          return Spice.error(undefined, "time_sessions missing", v);
+                        }
+                        if (match$48.TAG === "Ok") {
+                          return {
+                                  TAG: "Ok",
+                                  _0: {
+                                    id: id,
+                                    title: title,
+                                    notes: notes,
+                                    estimated_time: estimated_time,
+                                    estimated_time_map: estimated_time_map,
+                                    due_date: undefined,
+                                    completed_at: undefined,
+                                    created_at: created_at$3,
+                                    updated_at: updated_at$3,
+                                    parent_task_id: match$46._0,
+                                    tracked_time: match$47._0,
+                                    time_sessions: match$48._0
+                                  }
+                                };
+                        }
+                        var e$39 = match$48._0;
+                        return {
+                                TAG: "Error",
+                                _0: {
+                                  path: ".time_sessions" + e$39.path,
+                                  message: e$39.message,
+                                  value: e$39.value
+                                }
+                              };
+                      }
+                      var e$40 = match$47._0;
+                      return {
+                              TAG: "Error",
+                              _0: {
+                                path: ".tracked_time" + e$40.path,
+                                message: e$40.message,
+                                value: e$40.value
+                              }
+                            };
+                    }
+                    var e$41 = match$46._0;
+                    return {
+                            TAG: "Error",
+                            _0: {
+                              path: ".parent_task_id" + e$41.path,
+                              message: e$41.message,
+                              value: e$41.value
+                            }
+                          };
+                  }
+                  var match$49 = Belt_Option.map(Js_dict.get(v, "tracked_time"), Spice.intFromJson);
                   if (match$49 === undefined) {
-                    return Spice.error(undefined, "time_sessions missing", v);
+                    return Spice.error(undefined, "tracked_time missing", v);
                   }
                   if (match$49.TAG === "Ok") {
+                    var match$50 = Belt_Option.map(Js_dict.get(v, "time_sessions"), (function (extra) {
+                            return Spice.arrayFromJson(session_decode, extra);
+                          }));
+                    if (match$50 === undefined) {
+                      return Spice.error(undefined, "time_sessions missing", v);
+                    }
+                    if (match$50.TAG === "Ok") {
+                      return {
+                              TAG: "Ok",
+                              _0: {
+                                id: id,
+                                title: title,
+                                notes: notes,
+                                estimated_time: estimated_time,
+                                estimated_time_map: estimated_time_map,
+                                due_date: undefined,
+                                completed_at: undefined,
+                                created_at: created_at$3,
+                                updated_at: updated_at$3,
+                                parent_task_id: undefined,
+                                tracked_time: match$49._0,
+                                time_sessions: match$50._0
+                              }
+                            };
+                    }
+                    var e$42 = match$50._0;
                     return {
-                            TAG: "Ok",
+                            TAG: "Error",
                             _0: {
-                              id: id,
-                              title: title,
-                              notes: notes,
-                              estimated_time: estimated_time,
-                              due_date: undefined,
-                              completed_at: undefined,
-                              created_at: created_at$3,
-                              updated_at: updated_at$3,
-                              parent_task_id: undefined,
-                              tracked_time: match$48._0,
-                              time_sessions: match$49._0
+                              path: ".time_sessions" + e$42.path,
+                              message: e$42.message,
+                              value: e$42.value
                             }
                           };
                   }
-                  var e$42 = match$49._0;
+                  var e$43 = match$49._0;
                   return {
                           TAG: "Error",
                           _0: {
-                            path: ".time_sessions" + e$42.path,
-                            message: e$42.message,
-                            value: e$42.value
+                            path: ".tracked_time" + e$43.path,
+                            message: e$43.message,
+                            value: e$43.value
                           }
                         };
                 }
-                var e$43 = match$48._0;
+                var e$44 = match$45._0;
                 return {
                         TAG: "Error",
                         _0: {
-                          path: ".tracked_time" + e$43.path,
-                          message: e$43.message,
-                          value: e$43.value
+                          path: ".updated_at" + e$44.path,
+                          message: e$44.message,
+                          value: e$44.value
                         }
                       };
               }
-              var e$44 = match$44._0;
-              return {
-                      TAG: "Error",
-                      _0: {
-                        path: ".updated_at" + e$44.path,
-                        message: e$44.message,
-                        value: e$44.value
-                      }
-                    };
-            }
-            var match$50 = Belt_Option.map(Js_dict.get(v, "parent_task_id"), (function (extra) {
-                    return Spice.optionFromJson(Spice.stringFromJson, extra);
-                  }));
-            if (match$50 !== undefined) {
-              if (match$50.TAG === "Ok") {
-                var match$51 = Belt_Option.map(Js_dict.get(v, "tracked_time"), Spice.intFromJson);
-                if (match$51 === undefined) {
-                  return Spice.error(undefined, "tracked_time missing", v);
-                }
+              var match$51 = Belt_Option.map(Js_dict.get(v, "parent_task_id"), (function (extra) {
+                      return Spice.optionFromJson(Spice.stringFromJson, extra);
+                    }));
+              if (match$51 !== undefined) {
                 if (match$51.TAG === "Ok") {
-                  var match$52 = Belt_Option.map(Js_dict.get(v, "time_sessions"), (function (extra) {
-                          return Spice.arrayFromJson(session_decode, extra);
-                        }));
+                  var match$52 = Belt_Option.map(Js_dict.get(v, "tracked_time"), Spice.intFromJson);
                   if (match$52 === undefined) {
-                    return Spice.error(undefined, "time_sessions missing", v);
+                    return Spice.error(undefined, "tracked_time missing", v);
                   }
                   if (match$52.TAG === "Ok") {
+                    var match$53 = Belt_Option.map(Js_dict.get(v, "time_sessions"), (function (extra) {
+                            return Spice.arrayFromJson(session_decode, extra);
+                          }));
+                    if (match$53 === undefined) {
+                      return Spice.error(undefined, "time_sessions missing", v);
+                    }
+                    if (match$53.TAG === "Ok") {
+                      return {
+                              TAG: "Ok",
+                              _0: {
+                                id: id,
+                                title: title,
+                                notes: notes,
+                                estimated_time: estimated_time,
+                                estimated_time_map: estimated_time_map,
+                                due_date: undefined,
+                                completed_at: undefined,
+                                created_at: created_at$3,
+                                updated_at: undefined,
+                                parent_task_id: match$51._0,
+                                tracked_time: match$52._0,
+                                time_sessions: match$53._0
+                              }
+                            };
+                    }
+                    var e$45 = match$53._0;
                     return {
-                            TAG: "Ok",
+                            TAG: "Error",
                             _0: {
-                              id: id,
-                              title: title,
-                              notes: notes,
-                              estimated_time: estimated_time,
-                              due_date: undefined,
-                              completed_at: undefined,
-                              created_at: created_at$3,
-                              updated_at: undefined,
-                              parent_task_id: match$50._0,
-                              tracked_time: match$51._0,
-                              time_sessions: match$52._0
+                              path: ".time_sessions" + e$45.path,
+                              message: e$45.message,
+                              value: e$45.value
                             }
                           };
                   }
-                  var e$45 = match$52._0;
+                  var e$46 = match$52._0;
                   return {
                           TAG: "Error",
                           _0: {
-                            path: ".time_sessions" + e$45.path,
-                            message: e$45.message,
-                            value: e$45.value
+                            path: ".tracked_time" + e$46.path,
+                            message: e$46.message,
+                            value: e$46.value
                           }
                         };
                 }
-                var e$46 = match$51._0;
+                var e$47 = match$51._0;
                 return {
                         TAG: "Error",
                         _0: {
-                          path: ".tracked_time" + e$46.path,
-                          message: e$46.message,
-                          value: e$46.value
+                          path: ".parent_task_id" + e$47.path,
+                          message: e$47.message,
+                          value: e$47.value
                         }
                       };
               }
-              var e$47 = match$50._0;
-              return {
-                      TAG: "Error",
-                      _0: {
-                        path: ".parent_task_id" + e$47.path,
-                        message: e$47.message,
-                        value: e$47.value
-                      }
-                    };
-            }
-            var match$53 = Belt_Option.map(Js_dict.get(v, "tracked_time"), Spice.intFromJson);
-            if (match$53 === undefined) {
-              return Spice.error(undefined, "tracked_time missing", v);
-            }
-            if (match$53.TAG === "Ok") {
-              var match$54 = Belt_Option.map(Js_dict.get(v, "time_sessions"), (function (extra) {
-                      return Spice.arrayFromJson(session_decode, extra);
-                    }));
+              var match$54 = Belt_Option.map(Js_dict.get(v, "tracked_time"), Spice.intFromJson);
               if (match$54 === undefined) {
-                return Spice.error(undefined, "time_sessions missing", v);
+                return Spice.error(undefined, "tracked_time missing", v);
               }
               if (match$54.TAG === "Ok") {
+                var match$55 = Belt_Option.map(Js_dict.get(v, "time_sessions"), (function (extra) {
+                        return Spice.arrayFromJson(session_decode, extra);
+                      }));
+                if (match$55 === undefined) {
+                  return Spice.error(undefined, "time_sessions missing", v);
+                }
+                if (match$55.TAG === "Ok") {
+                  return {
+                          TAG: "Ok",
+                          _0: {
+                            id: id,
+                            title: title,
+                            notes: notes,
+                            estimated_time: estimated_time,
+                            estimated_time_map: estimated_time_map,
+                            due_date: undefined,
+                            completed_at: undefined,
+                            created_at: created_at$3,
+                            updated_at: undefined,
+                            parent_task_id: undefined,
+                            tracked_time: match$54._0,
+                            time_sessions: match$55._0
+                          }
+                        };
+                }
+                var e$48 = match$55._0;
                 return {
-                        TAG: "Ok",
+                        TAG: "Error",
                         _0: {
-                          id: id,
-                          title: title,
-                          notes: notes,
-                          estimated_time: estimated_time,
-                          due_date: undefined,
-                          completed_at: undefined,
-                          created_at: created_at$3,
-                          updated_at: undefined,
-                          parent_task_id: undefined,
-                          tracked_time: match$53._0,
-                          time_sessions: match$54._0
+                          path: ".time_sessions" + e$48.path,
+                          message: e$48.message,
+                          value: e$48.value
                         }
                       };
               }
-              var e$48 = match$54._0;
+              var e$49 = match$54._0;
               return {
                       TAG: "Error",
                       _0: {
-                        path: ".time_sessions" + e$48.path,
-                        message: e$48.message,
-                        value: e$48.value
+                        path: ".tracked_time" + e$49.path,
+                        message: e$49.message,
+                        value: e$49.value
                       }
                     };
             }
-            var e$49 = match$53._0;
+            var e$50 = match$44._0;
             return {
                     TAG: "Error",
                     _0: {
-                      path: ".tracked_time" + e$49.path,
-                      message: e$49.message,
-                      value: e$49.value
+                      path: ".created_at" + e$50.path,
+                      message: e$50.message,
+                      value: e$50.value
                     }
                   };
           }
-          var e$50 = match$43._0;
+          var e$51 = match$4._0;
           return {
                   TAG: "Error",
                   _0: {
-                    path: ".created_at" + e$50.path,
-                    message: e$50.message,
-                    value: e$50.value
+                    path: ".estimated_time_map" + e$51.path,
+                    message: e$51.message,
+                    value: e$51.value
                   }
                 };
         }
-        var e$51 = match$3._0;
+        var e$52 = match$3._0;
         return {
                 TAG: "Error",
                 _0: {
-                  path: ".estimated_time" + e$51.path,
-                  message: e$51.message,
-                  value: e$51.value
+                  path: ".estimated_time" + e$52.path,
+                  message: e$52.message,
+                  value: e$52.value
                 }
               };
       }
-      var e$52 = match$2._0;
+      var e$53 = match$2._0;
       return {
               TAG: "Error",
               _0: {
-                path: ".notes" + e$52.path,
-                message: e$52.message,
-                value: e$52.value
+                path: ".notes" + e$53.path,
+                message: e$53.message,
+                value: e$53.value
               }
             };
     }
-    var e$53 = match$1._0;
+    var e$54 = match$1._0;
     return {
             TAG: "Error",
             _0: {
-              path: ".title" + e$53.path,
-              message: e$53.message,
-              value: e$53.value
+              path: ".title" + e$54.path,
+              message: e$54.message,
+              value: e$54.value
             }
           };
   }
-  var e$54 = match._0;
+  var e$55 = match._0;
   return {
           TAG: "Error",
           _0: {
-            path: ".id" + e$54.path,
-            message: e$54.message,
-            value: e$54.value
+            path: ".id" + e$55.path,
+            message: e$55.message,
+            value: e$55.value
           }
         };
 }
@@ -1452,9 +1547,184 @@ function tasksList_decode(v) {
         };
 }
 
+function draft_encode(v) {
+  return Js_dict.fromArray(Spice.filterOptional([
+                  [
+                    "title",
+                    Spice.stringToJson(v.title)
+                  ],
+                  [
+                    "notes",
+                    Spice.stringToJson(v.notes)
+                  ],
+                  [
+                    "estimated_time_map",
+                    estimated_time_map_encode(v.estimated_time_map)
+                  ],
+                  [
+                    "due_date",
+                    (function (extra) {
+                          return Spice.optionToJson(Spice.stringToJson, extra);
+                        })(v.due_date)
+                  ],
+                  [
+                    "parent_task_id",
+                    (function (extra) {
+                          return Spice.optionToJson(Spice.stringToJson, extra);
+                        })(v.parent_task_id)
+                  ]
+                ]));
+}
+
+function draft_decode(v) {
+  if (!Array.isArray(v) && (v === null || typeof v !== "object") && typeof v !== "number" && typeof v !== "string" && typeof v !== "boolean") {
+    return Spice.error(undefined, "Not an object", v);
+  }
+  if (!(typeof v === "object" && !Array.isArray(v))) {
+    return Spice.error(undefined, "Not an object", v);
+  }
+  var match = Belt_Option.map(Js_dict.get(v, "title"), Spice.stringFromJson);
+  if (match === undefined) {
+    return Spice.error(undefined, "title missing", v);
+  }
+  if (match.TAG === "Ok") {
+    var title = match._0;
+    var match$1 = Belt_Option.map(Js_dict.get(v, "notes"), Spice.stringFromJson);
+    if (match$1 === undefined) {
+      return Spice.error(undefined, "notes missing", v);
+    }
+    if (match$1.TAG === "Ok") {
+      var notes = match$1._0;
+      var match$2 = Belt_Option.map(Js_dict.get(v, "estimated_time_map"), estimated_time_map_decode);
+      if (match$2 === undefined) {
+        return Spice.error(undefined, "estimated_time_map missing", v);
+      }
+      if (match$2.TAG === "Ok") {
+        var estimated_time_map = match$2._0;
+        var match$3 = Belt_Option.map(Js_dict.get(v, "due_date"), (function (extra) {
+                return Spice.optionFromJson(Spice.stringFromJson, extra);
+              }));
+        if (match$3 !== undefined) {
+          if (match$3.TAG === "Ok") {
+            var due_date = match$3._0;
+            var match$4 = Belt_Option.map(Js_dict.get(v, "parent_task_id"), (function (extra) {
+                    return Spice.optionFromJson(Spice.stringFromJson, extra);
+                  }));
+            if (match$4 === undefined) {
+              return {
+                      TAG: "Ok",
+                      _0: {
+                        title: title,
+                        notes: notes,
+                        estimated_time_map: estimated_time_map,
+                        due_date: due_date,
+                        parent_task_id: undefined
+                      }
+                    };
+            }
+            if (match$4.TAG === "Ok") {
+              return {
+                      TAG: "Ok",
+                      _0: {
+                        title: title,
+                        notes: notes,
+                        estimated_time_map: estimated_time_map,
+                        due_date: due_date,
+                        parent_task_id: match$4._0
+                      }
+                    };
+            }
+            var e = match$4._0;
+            return {
+                    TAG: "Error",
+                    _0: {
+                      path: ".parent_task_id" + e.path,
+                      message: e.message,
+                      value: e.value
+                    }
+                  };
+          }
+          var e$1 = match$3._0;
+          return {
+                  TAG: "Error",
+                  _0: {
+                    path: ".due_date" + e$1.path,
+                    message: e$1.message,
+                    value: e$1.value
+                  }
+                };
+        }
+        var match$5 = Belt_Option.map(Js_dict.get(v, "parent_task_id"), (function (extra) {
+                return Spice.optionFromJson(Spice.stringFromJson, extra);
+              }));
+        if (match$5 === undefined) {
+          return {
+                  TAG: "Ok",
+                  _0: {
+                    title: title,
+                    notes: notes,
+                    estimated_time_map: estimated_time_map,
+                    due_date: undefined,
+                    parent_task_id: undefined
+                  }
+                };
+        }
+        if (match$5.TAG === "Ok") {
+          return {
+                  TAG: "Ok",
+                  _0: {
+                    title: title,
+                    notes: notes,
+                    estimated_time_map: estimated_time_map,
+                    due_date: undefined,
+                    parent_task_id: match$5._0
+                  }
+                };
+        }
+        var e$2 = match$5._0;
+        return {
+                TAG: "Error",
+                _0: {
+                  path: ".parent_task_id" + e$2.path,
+                  message: e$2.message,
+                  value: e$2.value
+                }
+              };
+      }
+      var e$3 = match$2._0;
+      return {
+              TAG: "Error",
+              _0: {
+                path: ".estimated_time_map" + e$3.path,
+                message: e$3.message,
+                value: e$3.value
+              }
+            };
+    }
+    var e$4 = match$1._0;
+    return {
+            TAG: "Error",
+            _0: {
+              path: ".notes" + e$4.path,
+              message: e$4.message,
+              value: e$4.value
+            }
+          };
+  }
+  var e$5 = match._0;
+  return {
+          TAG: "Error",
+          _0: {
+            path: ".title" + e$5.path,
+            message: e$5.message,
+            value: e$5.value
+          }
+        };
+}
+
 async function createTask(task) {
   var response = await fetch("/api/tasks", {
-        body: task_encode(task),
+        body: draft_encode(task),
         method: "POST",
         headers: {
           "Content-Type": "json"
@@ -1495,12 +1765,16 @@ async function fetchAll() {
 export {
   session_encode ,
   session_decode ,
+  estimated_time_map_encode ,
+  estimated_time_map_decode ,
   task_encode ,
   task_decode ,
   tasks_encode ,
   tasks_decode ,
   tasksList_encode ,
   tasksList_decode ,
+  draft_encode ,
+  draft_decode ,
   createTask ,
   fetchTask ,
   fetchAll ,

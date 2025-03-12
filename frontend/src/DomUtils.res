@@ -10,3 +10,12 @@ module Window = {
 }
 
 @val external window: Window.t = "window"
+
+module FormData = {
+  type t
+  @new external make: Dom.element => t = "FormData"
+
+  @send @returns(nullable) external get: (t, string) => option<string> = "get"
+}
+
+@get @returns(nullable) external getName: Dom.element => option<string> = "name"

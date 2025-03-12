@@ -16,11 +16,17 @@ defmodule TaskyWeb.TaskJSON do
   end
 
   defp data(%Task{} = task) do
+    {hours, minutes} = Tasky.Tracking.estimated_time_hours_minutes(task)
+
     %{
       id: task.id,
       title: task.title,
       notes: task.notes,
       estimated_time: task.estimated_time,
+      estimated_time_map: %{
+        hours: hours,
+        minutes: minutes,
+      },
       due_date: task.due_date,
       completed_at: task.completed_at,
       created_at: task.inserted_at,

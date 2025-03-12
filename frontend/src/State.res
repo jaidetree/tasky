@@ -13,10 +13,18 @@ module Actions = {
   }
 
   module NewTask = {
+    type field =
+      | Title(string)
+      | EstimateHours(int)
+      | EstimateMinutes(int)
+      | Notes(string)
+      | ParentTask(option<string>)
+      | DueDate(option<string>)
+
     type action =
       | Init
       | Create
-      | Update(task)
+      | Update(field)
       | Save
       | Saved(task)
   }
@@ -100,29 +108,74 @@ module TaskFSM = {
 module NewTaskFSM = {
   type state =
     | Inactive
-    | Active(task)
+    | Active(draft)
     | Saving(promise<task>)
 
   type action = Actions.NewTask.action
+
+  module Reducers = {
+    let title = (draft: draft, title: string) => {
+      ...draft,
+      title,
+    }
+
+    let estimatedTimeHours = (draft: draft, hours: int) => {
+      ...draft,
+      estimated_time_map: {
+        ...draft.estimated_time_map,
+        hours,
+      },
+    }
+
+    let estimatedTimeMinutes = (draft: draft, minutes: int) => {
+      ...draft,
+      estimated_time_map: {
+        ...draft.estimated_time_map,
+        minutes,
+      },
+    }
+
+    let dueDate = (draft: draft, due_date: option<string>) => {
+      ...draft,
+      due_date,
+    }
+
+    let parentTask = (draft: draft, parent_task_id: option<string>) => {
+      ...draft,
+      parent_task_id,
+    }
+
+    let notes = (draft: draft, notes: string) => {
+      ...draft,
+      notes,
+    }
+  }
 
   let reduce = (prevState: state, action: action): state => {
     switch (prevState, action) {
     | (_, Init) => prevState
     | (Inactive, Create) =>
       Active({
-        id: "",
         title: "",
         notes: "",
         parent_task_id: None,
-        estimated_time: 0,
-        time_sessions: [],
-        tracked_time: 0,
-        created_at: "",
+        estimated_time_map: {
+          hours: 0,
+          minutes: 20,
+        },
         due_date: None,
-        completed_at: None,
-        updated_at: None,
       })
-    | (Active(_task), Update(task)) => Active(task)
+    | (Active(draft), Update(field)) =>
+      Active(
+        switch field {
+        | Title(title) => Reducers.title(draft, title)
+        | EstimateHours(hours) => Reducers.estimatedTimeHours(draft, hours)
+        | EstimateMinutes(minutes) => Reducers.estimatedTimeMinutes(draft, minutes)
+        | DueDate(dueDate) => Reducers.dueDate(draft, dueDate)
+        | ParentTask(id) => Reducers.parentTask(draft, id)
+        | Notes(notes) => Reducers.notes(draft, notes)
+        },
+      )
     | (Active(task), Save) => {
         open Promise
         let promise = createTask(task)
@@ -208,6 +261,15 @@ module TasksFSM = {
   let dispatch = (action: action): unit => {
     actionSignal->Signal.set(action)
   }
+
+  let getTasks = () => {
+    let state = stateSignal->Signal.get
+
+    switch state {
+    | Tasks(context) => context.tasks
+    | _ => []
+    }
+  }
 }
 
 module AppFSM = {
@@ -220,13 +282,6 @@ module AppFSM = {
 
   type transition = transition<state, action>
 
-  @spice
-  type serializable = {
-    appState: string,
-    subState: string,
-    data: Js.Json.t,
-  }
-
   let stateSignal: Signal.t<state> = Signal.make(Idle)
 
   let reduce = (prevState: state, action: action): state => {
@@ -238,6 +293,7 @@ module AppFSM = {
     | (Task(_prevId), OpenTask(action)) => Task(TaskFSM.reduce(Inactive, action))
 
     // New Task View
+    | (NewTask(state), NewTask(action)) => NewTask(NewTaskFSM.reduce(state, action))
     | (_, NewTask(action)) => NewTask(NewTaskFSM.reduce(Inactive, action))
 
     // Open task view while creating task
@@ -280,6 +336,24 @@ module AppFSM = {
   }
 }
 
+module Serialize = {
+  @spice
+  type newTaskState =
+    | Init
+    | Active(draft)
+
+  @spice
+  type taskState =
+    | Init
+    | Selected(string)
+
+  @spice
+  type t =
+    | Idle
+    | Task(taskState)
+    | NewTask(newTaskState)
+}
+
 Signal.effect(() => {
   let transition = AppFSM.transitionSignal->Signal.get
 
@@ -287,14 +361,10 @@ Signal.effect(() => {
   | NewTask(state) =>
     switch state {
     | Active(task) => {
-        let encodedTask = task->task_encode
-        let dict: AppFSM.serializable = {
-          appState: "NewTask",
-          subState: "Active",
-          data: encodedTask,
-        }
-        let json = dict->AppFSM.serializable_encode->Js.Json.stringify
-        Js.Console.log2("encoded", json)
+        let data: Serialize.t = NewTask(Active(task))
+        let encoded = data->Serialize.t_encode
+        let json = encoded->Js.Json.stringify
+        Js.Console.log2("json", json)
       }
     | _ => ()
     }

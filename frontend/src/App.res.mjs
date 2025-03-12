@@ -10,6 +10,10 @@ function App(props) {
   var state = State.TasksFSM.stateSignal.value;
   Hooks.useEffect((function () {
           State.TasksFSM.dispatch("Fetch");
+          State.AppFSM.dispatch({
+                TAG: "NewTask",
+                _0: "Create"
+              });
         }), []);
   var tmp;
   tmp = typeof state !== "object" ? "Tasky" : (

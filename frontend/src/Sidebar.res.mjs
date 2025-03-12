@@ -16,11 +16,11 @@ function Sidebar(props) {
   return JsxRuntime.jsx("div", {
               children: JsxRuntime.jsx("div", {
                     children: tmp,
-                    className: "w-[20rem] p-4"
+                    className: "w-[30rem] p-4"
                   }),
               className: CSSUtils.classNames([
                     "bg-gray-200 dark:bg-slate-700/20 overflow-hidden transition-all duration-500",
-                    isActive ? "w-[20rem]" : "w-0"
+                    isActive ? "w-[30rem]" : "w-0"
                   ])
             });
 }

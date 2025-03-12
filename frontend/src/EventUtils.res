@@ -58,16 +58,23 @@ external removeEventListener: (
 ) => unit = "removeEventListener"
 
 @get @return(nullable)
-external getValue: {..} => option<string> = "value"
+external getValue: Dom.element => option<string> = "value"
 
-module MouseEvent = {
-  type t = Dom.mouseEvent
-  @get external pageX: t => int = "pageX"
-  @get external pageY: t => int = "pageY"
+// module MouseEvent = {
+//   type t = Dom.mouseEvent
+//   @get external pageX: t => int = "pageX"
+//   @get external pageY: t => int = "pageY"
+//
+//   @get
+//   external target: t => Dom.eventTarget = "target"
+//
+//   @get
+//   external currentTarget: t => Dom.eventTarget = "currentTarget"
+// }
 
-  @get
-  external target: t => Dom.eventTarget = "target"
+module FormEvent = {
+  type t = JsxEvent.Form.t
 
-  @get
-  external currentTarget: t => Dom.eventTarget = "currentTarget"
+  @get @return(nullable) external currentTarget: t => option<Dom.element> = "currentTarget"
+  @get external target: t => Dom.element = "target"
 }

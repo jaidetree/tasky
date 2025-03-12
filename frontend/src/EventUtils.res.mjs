@@ -7,10 +7,10 @@ var $$AbortController = {
   Signal: Signal
 };
 
-var $$MouseEvent = {};
+var FormEvent = {};
 
 export {
   $$AbortController ,
-  $$MouseEvent ,
+  FormEvent ,
 }
 /* No side effect */

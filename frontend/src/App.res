@@ -7,6 +7,7 @@ let make = () => {
 
   useEffect0(() => {
     TasksFSM.dispatch(Fetch)
+    AppFSM.dispatch(NewTask(Create))
     None
   })
 
