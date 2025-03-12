@@ -1722,12 +1722,52 @@ function draft_decode(v) {
         };
 }
 
+function createRequest_encode(v) {
+  return Js_dict.fromArray(Spice.filterOptional([[
+                    "task",
+                    draft_encode(v.task)
+                  ]]));
+}
+
+function createRequest_decode(v) {
+  if (!Array.isArray(v) && (v === null || typeof v !== "object") && typeof v !== "number" && typeof v !== "string" && typeof v !== "boolean") {
+    return Spice.error(undefined, "Not an object", v);
+  }
+  if (!(typeof v === "object" && !Array.isArray(v))) {
+    return Spice.error(undefined, "Not an object", v);
+  }
+  var match = Belt_Option.map(Js_dict.get(v, "task"), draft_decode);
+  if (match === undefined) {
+    return Spice.error(undefined, "task missing", v);
+  }
+  if (match.TAG === "Ok") {
+    return {
+            TAG: "Ok",
+            _0: {
+              task: match._0
+            }
+          };
+  }
+  var e = match._0;
+  return {
+          TAG: "Error",
+          _0: {
+            path: ".task" + e.path,
+            message: e.message,
+            value: e.value
+          }
+        };
+}
+
 async function createTask(task) {
+  var body = {
+    task: task
+  };
   var response = await fetch("/api/tasks", {
-        body: draft_encode(task),
+        body: JSON.stringify(createRequest_encode(body)),
         method: "POST",
         headers: {
-          "Content-Type": "json"
+          "Content-Type": "application/json"
         }
       });
   var json = await response.json();
@@ -1739,7 +1779,7 @@ async function fetchTask(taskId) {
   var response = await fetch("/api/tasks/" + taskId, {
         method: "GET",
         headers: {
-          "Content-Type": "json"
+          "Content-Type": "application/json"
         }
       });
   var json = await response.json();
@@ -1751,7 +1791,7 @@ async function fetchAll() {
   var response = await fetch("/api/tasks", {
         method: "GET",
         headers: {
-          "Content-Type": "json"
+          "Content-Type": "application/json"
         }
       });
   var json = await response.json();
@@ -1775,6 +1815,8 @@ export {
   tasksList_decode ,
   draft_encode ,
   draft_decode ,
+  createRequest_encode ,
+  createRequest_decode ,
   createTask ,
   fetchTask ,
   fetchAll ,

@@ -46,14 +46,18 @@ type draft = {
   parent_task_id: option<string>,
 }
 
+@spice
+type createRequest = {task: draft}
+
 let createTask: draft => promise<task> = async task => {
+  let body = {task: task}
   let response = await fetch(
     "/api/tasks",
     {
-      "body": task->draft_encode,
+      "body": body->createRequest_encode->Js.Json.stringify,
       "method": "POST",
       "headers": {
-        "Content-Type": "json",
+        "Content-Type": "application/json",
       },
     },
   )
@@ -68,7 +72,7 @@ let fetchTask: string => promise<task> = async taskId => {
     {
       "method": "GET",
       "headers": {
-        "Content-Type": "json",
+        "Content-Type": "application/json",
       },
     },
   )
@@ -84,7 +88,7 @@ let fetchAll: unit => promise<tasks> = async () => {
     {
       "method": "GET",
       "headers": {
-        "Content-Type": "json",
+        "Content-Type": "application/json",
       },
     },
   )
