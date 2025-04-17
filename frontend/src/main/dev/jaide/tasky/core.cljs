@@ -12,7 +12,7 @@
   [:div
    [:> BoltIcon
     {:class "size-5"}]
-   "It works!"])
+   "It works and reloads again even on mobile!"])
 
 (defn -main
   []

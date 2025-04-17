@@ -15,17 +15,24 @@ export default defineConfig({
       include: ["build/app/**.js"],
     }),
   ],
+  mode: "development",
+  publicDir: false,
   build: {
-    // manifest: true,
     // assetsDir: resolve(__dirname, "../backend/priv/static/assets"),
     // outDir: resolve(__dirname, "../backend/priv/static/js"),
-    // assetsDir: "../public/assets",
-    // outDir: "../public/js",
-    outDir: "public/js",
-    // emptyOutDir: true,
-    // rollupOptions: {
-    //   input: "/src/Main.res.mjs",
-    // },
+    outDir: "public/build",
+    assetsDir: "assets",
+    emptyOutDir: true,
+    watch: {
+      include: ["target/external.js", "src/app.css"],
+    },
+    rollupOptions: {
+      input: "target/external.js",
+      output: {
+        entryFileNames: "js/[name].js",
+        assetFileNames: "assets/[name][extname]",
+      },
+    },
   },
   server: {
     allowedHosts: true,
