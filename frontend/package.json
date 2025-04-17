@@ -1,6 +1,6 @@
 {
   "name": "tasky-frontend",
-  "version": "1.0.0",
+  "version": "2025.4.17",
   "description": "Frontend for a task mgmt solution",
   "main": "index.js",
   "type": "module",
