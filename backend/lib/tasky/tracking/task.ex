@@ -8,7 +8,7 @@ defmodule Tasky.Tracking.Task do
   @foreign_key_type :binary_id
   schema "tasks" do
     field :title, :string
-    field :notes, :string
+    field :notes, :string, default: ""
     field :estimated_time, :integer
     field :due_date, :utc_datetime
     field :completed_at, :utc_datetime

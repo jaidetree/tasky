@@ -10,30 +10,33 @@ function App(props) {
   var state = State.TasksFSM.stateSignal.value;
   Hooks.useEffect((function () {
           State.TasksFSM.dispatch("Fetch");
-          State.AppFSM.dispatch({
-                TAG: "NewTask",
-                _0: "Create"
+          State.ToasterFSM.dispatch({
+                TAG: "Toast",
+                _0: {
+                  title: "Test",
+                  message: "Test toast message",
+                  duration: 0,
+                  status: "Info"
+                }
               });
         }), []);
   var tmp;
   tmp = typeof state !== "object" ? "Tasky" : (
       state.TAG === "Loading" ? JsxRuntime.jsx("div", {
               children: "Loading..."
-            }) : JsxRuntime.jsxs("main", {
+            }) : JsxRuntime.jsx("main", {
+              children: JsxRuntime.jsx(TasksIndex.make, {
+                    tasks: state._0.tasks
+                  }),
+              className: "max-w-4xl flex-grow mx-auto px-4 py-20 overflow-auto"
+            })
+    );
+  return JsxRuntime.jsxs("div", {
               children: [
-                JsxRuntime.jsx("div", {
-                      children: JsxRuntime.jsx(TasksIndex.make, {
-                            tasks: state._0.tasks
-                          }),
-                      className: "max-w-4xl flex-grow mx-auto px-4 py-20 overflow-auto"
-                    }),
+                tmp,
                 JsxRuntime.jsx(Sidebar.make, {})
               ],
               className: "flex flex-row items-stretch min-h-screen"
-            })
-    );
-  return JsxRuntime.jsx("div", {
-              children: tmp
             });
 }
 

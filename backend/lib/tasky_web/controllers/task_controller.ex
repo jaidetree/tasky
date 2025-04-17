@@ -14,6 +14,8 @@ defmodule TaskyWeb.TaskController do
   def create(conn, %{"task" => task_params}) do
     task_params = Tracking.normalize_estimated_time(task_params)
 
+    IO.inspect(task_params)
+
     with {:ok, %Task{} = task} <- Tracking.create_task(task_params) do
       conn
       |> put_status(:created)

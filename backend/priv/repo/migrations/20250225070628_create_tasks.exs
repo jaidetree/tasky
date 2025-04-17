@@ -5,7 +5,7 @@ defmodule Tasky.Repo.Migrations.CreateTasks do
     create table(:tasks, primary_key: false) do
       add :id, :binary_id, primary_key: true
       add :title, :string
-      add :notes, :text
+      add :notes, :text, null: false, default: ""
       add :estimated_time, :integer
       add :due_date, :utc_datetime
       add :completed_at, :utc_datetime

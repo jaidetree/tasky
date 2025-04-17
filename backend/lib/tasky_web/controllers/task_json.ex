@@ -12,7 +12,7 @@ defmodule TaskyWeb.TaskJSON do
   Renders a single task.
   """
   def show(%{task: task}) do
-    %{data: data(task)}
+    data(task)
   end
 
   defp data(%Task{} = task) do
@@ -32,7 +32,7 @@ defmodule TaskyWeb.TaskJSON do
       created_at: task.inserted_at,
       updated_at: task.updated_at,
       parent_task_id: task.parent_task_id,
-      tracked_time: Tasky.Tracking.get_total_minutes_from_task(task),
+      tracked_time: Tasky.Tracking.get_total_seconds_from_task(task),
       time_sessions: render_time_sessions(task)
     }
   end

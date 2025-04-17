@@ -96,6 +96,5 @@ let fetchAll: unit => promise<tasks> = async () => {
   let decoded = json->tasksList_decode
   let {tasks} = decoded->Result.getExn
 
-  Js.Console.log2("tasks", tasks)
   tasks
 }

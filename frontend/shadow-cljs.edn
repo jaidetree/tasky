@@ -1,0 +1,21 @@
+;; shadow-cljs configuration
+{:deps {:aliases [cljs]}
+
+ :builds
+ {:app {:target     :esm
+        :output-dir "build/app"
+        :modules    {:tasky {:init-fn dev.jaide.tasky.core/-main}}
+        :devtools   {:autoload false
+                     :devtools-url "http://localhost:9630"
+                     :hud false}
+        :js-options {:js-provider :import}
+        :release    {:compiler-options {:optimizations :advanced
+                                        :infer-externs :auto}}}
+  :test {:target :node-test
+         :output-to "build/test/node.js"
+         :ns-regexp "-test"
+         :autorun true
+         :compiler-options {:warnings {:invalid-arithmetic false}}
+         :release {:autorun false
+                   :compiler-options {:optimizations :simple
+                                      :elide-asserts false}}}}}

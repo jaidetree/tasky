@@ -383,7 +383,7 @@ defmodule Tasky.Tracking do
   end
 
   @doc """
-  Return total minutes from time_sessions that ended
+  Return total seconds from time_sessions that ended
 
   ## Examples
 
@@ -391,11 +391,12 @@ defmodule Tasky.Tracking do
       60
 
   """
-  def get_total_minutes_from_task(task) do
+  def get_total_seconds_from_task(%{time_sessions: %Ecto.Association.NotLoaded{}}), do: 0
+  def get_total_seconds_from_task(task) do
     task.time_sessions
     |> Enum.filter(fn session -> session.end_time != nil end)
     |> Enum.map(fn session ->
-      DateTime.diff(session.end_time, session.start_time, :minute)
+      DateTime.diff(session.end_time, session.start_time, :second)
     end)
     |> Enum.sum()
   end
@@ -414,11 +415,8 @@ defmodule Tasky.Tracking do
   """
   def normalize_estimated_time(task_params) do
     case task_params do
-      %{"estimated_time_map" => %{"hours" => hours, "minutes" => minutes}}
-      when is_binary(hours) and is_binary(minutes) ->
-        hours_int = String.to_integer(hours)
-        minutes_int = String.to_integer(minutes)
-        total_minutes = minutes_int + hours_int * 60
+      %{"estimated_time_map" => %{"hours" => hours, "minutes" => minutes}} ->
+        total_minutes = minutes + hours * 60
         Map.put(task_params, "estimated_time", total_minutes)
 
       _ ->

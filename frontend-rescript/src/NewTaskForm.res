@@ -67,10 +67,16 @@ let onInput = e => {
   }
 }
 
+let value = (opt: option<Task.draft>, fn: Task.draft => 'value) => opt->Option.mapOr("", fn)
+
 @jsx.component
 let make = (~state: NewTaskFSM.state) => {
-  let estimatedTime = switch state {
-  | Active(draft) => draft.estimated_time_map
+  let formData = switch state {
+  | Active(draft) => Some(draft)
+  | _ => None
+  }
+  let estimatedTime = switch formData {
+  | Some(draft) => draft.estimated_time_map
   | _ => {hours: 0, minutes: 20}
   }
 
@@ -84,6 +90,15 @@ let make = (~state: NewTaskFSM.state) => {
       <section>
         <label htmlFor="id_title" className="block py-2"> {"Title"->string} </label>
         <input type_="text" name="title" className="bg-stone-700/20 p-2 rounded-sm w-full" />
+      </section>
+      <section>
+        <label htmlFor="id_notes" className="block py-2"> {"Notes"->string} </label>
+        <textarea
+          name="notes"
+          id="id_notes"
+          className="bg-stone-700/20 p-2 rounded-sm w-full h-40"
+          value={formData->value(draft => draft.notes)}
+        />
       </section>
       <section>
         <label htmlFor="id_estimated_time" className="block py-2"> {"Estimate"->string} </label>
@@ -118,14 +133,20 @@ let make = (~state: NewTaskFSM.state) => {
       </section>
       <section>
         <label htmlFor="id_due_date" className="block py-2"> {"Due Date"->string} </label>
-        <input type_="date" name="due_date" className="bg-stone-700/20 p-2 rounded-sm w-full" />
+        <input
+          type_="date"
+          name="due_date"
+          className="bg-stone-700/20 p-2 rounded-sm w-full"
+          value={formData->value(draft => draft.due_date->Option.getOr(""))}
+        />
       </section>
       <section>
         <label htmlFor="id_parent_task_id" className="block py-2"> {"Parent Task"->string} </label>
         <select
           className="bg-stone-700/20 p-2 rounded-sm w-full"
           id="id_parent_task_id"
-          name="parent_task_id">
+          name="parent_task_id"
+          value={formData->value(draft => draft.parent_task_id->Option.getOr(""))}>
           <option value=""> {"-- No Parent Task --"->string} </option>
           {tasks
           ->Array.map(task => {
@@ -133,12 +154,6 @@ let make = (~state: NewTaskFSM.state) => {
           })
           ->array}
         </select>
-      </section>
-      <section>
-        <label htmlFor="id_notes" className="block py-2"> {"Notes"->string} </label>
-        <textarea
-          name="notes" id="id_notes" className="bg-stone-700/20 p-2 rounded-sm w-full h-40"
-        />
       </section>
       <section className="flex flex-row justify-end items-center gap-2 py-4">
         <button type_="submit" className="btn py-2 px-4 text-white bg-blue-500">

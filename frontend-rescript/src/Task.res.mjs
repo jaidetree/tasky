@@ -1796,10 +1796,7 @@ async function fetchAll() {
       });
   var json = await response.json();
   var decoded = tasksList_decode(json);
-  var match = Core__Result.getExn(decoded);
-  var tasks = match.tasks;
-  console.log("tasks", tasks);
-  return tasks;
+  return Core__Result.getExn(decoded).tasks;
 }
 
 export {

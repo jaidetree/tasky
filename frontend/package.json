@@ -1,37 +1,42 @@
 {
   "name": "tasky-frontend",
-  "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "Frontend for a task mgmt solution",
+  "main": "index.js",
   "type": "module",
   "scripts": {
-    "res:build": "rescript",
-    "res:clean": "rescript clean",
-    "res:dev": "rescript -w",
-    "dev": "run-p 'res:dev' 'dev:vite'",
-    "dev:vite": "vite",
-    "watch:vite": "vite build --watch",
-    "build": "vite build",
-    "preview": "vite preview"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "dependencies": {
-    "@greenlabs/ppx-spice": "^0.2.2",
-    "@preact/signals": "^2.0.1",
-    "@rescript/core": "^1.6.1",
-    "@tailwindcss/vite": "^4.0.9",
-    "npm-run-all": "^4.1.5",
-    "preact": "^10.26.2",
-    "rescript": "^11.1.4"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jaidetree/tasky.git"
   },
+  "keywords": [
+    "clojurescript",
+    "tasks"
+  ],
+  "author": "jaidetree",
+  "license": "GPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/jaidetree/tasky/issues"
+  },
+  "homepage": "https://github.com/jaidetree/tasky#readme",
   "devDependencies": {
     "@preact/preset-vite": "^2.10.1",
-    "@rescript/language-server": "^1.58.0",
-    "autoprefixer": "^10.4.15",
-    "postcss": "^8.4.28",
-    "tailwindcss": "^4.0.8",
-    "vite": "^5.0.6"
+    "@tailwindcss/vite": "^4.1.4",
+    "nbb": "^1.3.196",
+    "shadow-cljs": "^2.28.23",
+    "vite": "^6.3.1"
   },
-  "peerDependencies": {
-    "@tailwindcss/language-server": "^0.14.6",
-    "prettier": "^3.5.2"
+  "dependencies": {
+    "@heroicons/react": "^2.2.0",
+    "@preact/signals": "^2.0.3",
+    "baconjs": "^3.0.21",
+    "preact": "^10.26.5",
+    "react": "npm:@preact/compat@^18.3.1",
+    "react-dom": "npm:@preact/compat@^18.3.1"
+  },
+  "imports": {
+    "#src/*": "./src/*"
   }
 }

@@ -149,13 +149,18 @@ function onInput(e) {
   console.warn("Could not get name of field");
 }
 
+function value(opt, fn) {
+  return Core__Option.mapOr(opt, "", fn);
+}
+
 function NewTaskForm(props) {
   var state = props.state;
-  var estimatedTime;
-  estimatedTime = typeof state !== "object" || state.TAG !== "Active" ? ({
+  var formData;
+  formData = typeof state !== "object" || state.TAG !== "Active" ? undefined : state._0;
+  var estimatedTime = formData !== undefined ? formData.estimated_time_map : ({
         hours: 0,
         minutes: 20
-      }) : state._0.estimated_time_map;
+      });
   var tasks = State.TasksFSM.getTasks();
   return JsxRuntime.jsxs("form", {
               children: [
@@ -178,6 +183,23 @@ function NewTaskForm(props) {
                                       className: "bg-stone-700/20 p-2 rounded-sm w-full",
                                       name: "title",
                                       type: "text"
+                                    })
+                              ]
+                            }),
+                        JsxRuntime.jsxs("section", {
+                              children: [
+                                JsxRuntime.jsx("label", {
+                                      children: "Notes",
+                                      className: "block py-2",
+                                      htmlFor: "id_notes"
+                                    }),
+                                JsxRuntime.jsx("textarea", {
+                                      className: "bg-stone-700/20 p-2 rounded-sm w-full h-40",
+                                      id: "id_notes",
+                                      name: "notes",
+                                      value: value(formData, (function (draft) {
+                                              return draft.notes;
+                                            }))
                                     })
                               ]
                             }),
@@ -241,7 +263,10 @@ function NewTaskForm(props) {
                                 JsxRuntime.jsx("input", {
                                       className: "bg-stone-700/20 p-2 rounded-sm w-full",
                                       name: "due_date",
-                                      type: "date"
+                                      type: "date",
+                                      value: value(formData, (function (draft) {
+                                              return Core__Option.getOr(draft.due_date, "");
+                                            }))
                                     })
                               ]
                             }),
@@ -267,21 +292,10 @@ function NewTaskForm(props) {
                                       ],
                                       className: "bg-stone-700/20 p-2 rounded-sm w-full",
                                       id: "id_parent_task_id",
-                                      name: "parent_task_id"
-                                    })
-                              ]
-                            }),
-                        JsxRuntime.jsxs("section", {
-                              children: [
-                                JsxRuntime.jsx("label", {
-                                      children: "Notes",
-                                      className: "block py-2",
-                                      htmlFor: "id_notes"
-                                    }),
-                                JsxRuntime.jsx("textarea", {
-                                      className: "bg-stone-700/20 p-2 rounded-sm w-full h-40",
-                                      id: "id_notes",
-                                      name: "notes"
+                                      name: "parent_task_id",
+                                      value: value(formData, (function (draft) {
+                                              return Core__Option.getOr(draft.parent_task_id, "");
+                                            }))
                                     })
                               ]
                             }),
@@ -309,6 +323,7 @@ export {
   Update ,
   onSubmit ,
   onInput ,
+  value ,
   make ,
 }
 /* State Not a pure module */

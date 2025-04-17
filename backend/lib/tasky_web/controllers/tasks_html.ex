@@ -30,7 +30,7 @@ defmodule TaskyWeb.TasksHTML do
   end
 
   def get_total_session_time(task) do
-    Tasky.Tracking.get_total_minutes_from_task(task)
+    Tasky.Tracking.get_total_seconds_from_task(task)
   end
 
   def completed_class(task) do

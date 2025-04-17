@@ -12,7 +12,7 @@ export default defineConfig({
   plugins: [
     tailwindcss(),
     preact({
-      include: ["build/app/**.js"],
+      include: ["**/*.res.mjs"],
     }),
   ],
   build: {
@@ -21,7 +21,6 @@ export default defineConfig({
     // outDir: resolve(__dirname, "../backend/priv/static/js"),
     // assetsDir: "../public/assets",
     // outDir: "../public/js",
-    outDir: "public/js",
     // emptyOutDir: true,
     // rollupOptions: {
     //   input: "/src/Main.res.mjs",

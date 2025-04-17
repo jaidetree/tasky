@@ -4,6 +4,7 @@ import * as Task from "./Task.res.mjs";
 import * as Spice from "@greenlabs/ppx-spice/src/rescript/Spice.res.mjs";
 import * as DateTime from "./DateTime.res.mjs";
 import * as Belt_Array from "rescript/lib/es6/belt_Array.js";
+import * as Core__Promise from "@rescript/core/src/Core__Promise.res.mjs";
 import * as Signals from "@preact/signals";
 
 var Task$1 = {};
@@ -12,51 +13,90 @@ var NewTask = {};
 
 var Tasks = {};
 
+var Toast = {};
+
 var App = {};
 
 var Actions = {
   Task: Task$1,
   NewTask: NewTask,
   Tasks: Tasks,
+  Toast: Toast,
   App: App
 };
 
 var actionSignal = Signals.signal("Init");
 
+function rootDispatch(action) {
+  actionSignal.value = action;
+}
+
+function dispatch(action) {
+  actionSignal.value = {
+    TAG: "OpenTask",
+    _0: action
+  };
+}
+
 function reduce(prevState, action) {
-  var exit = 0;
-  if (typeof action !== "object") {
-    if (action === "Init") {
+  if (typeof action !== "object" && action === "Init") {
+    return prevState;
+  }
+  if (typeof prevState !== "object") {
+    if (typeof action !== "object") {
       return prevState;
     }
-    exit = 2;
-  } else {
-    exit = 2;
-  }
-  if (exit === 2) {
-    if (typeof prevState !== "object") {
-      if (typeof action !== "object" || action.TAG !== "Open") {
-        return prevState;
-      } else {
-        return {
-                TAG: "Fetching",
-                _0: Task.fetchTask(action._0)
-              };
-      }
+    if (action.TAG !== "Open") {
+      return prevState;
     }
+    var taskId = action._0;
+    var promise = Core__Promise.$$catch(Task.fetchTask(taskId).then(function (task) {
+              actionSignal.value = {
+                TAG: "OpenTask",
+                _0: {
+                  TAG: "Fetched",
+                  _0: task
+                }
+              };
+              return Promise.resolve(task);
+            }), (function (error) {
+            console.error(error);
+            actionSignal.value = {
+              TAG: "OpenTask",
+              _0: {
+                TAG: "Error",
+                _0: error,
+                _1: taskId
+              }
+            };
+            return Promise.reject(error);
+          }));
+    return {
+            TAG: "Fetching",
+            _0: promise
+          };
+  } else {
     switch (prevState.TAG) {
       case "Fetching" :
-          if (typeof action !== "object" || action.TAG !== "Fetched") {
+          if (typeof action !== "object") {
             return prevState;
-          } else {
-            return {
-                    TAG: "Idle",
-                    _0: action._0
-                  };
           }
-      case "Error" :
-          break;
-      case "Idle" :
+          switch (action.TAG) {
+            case "Fetched" :
+                return {
+                        TAG: "Active",
+                        _0: action._0
+                      };
+            case "Error" :
+                return {
+                        TAG: "Error",
+                        _0: action._0,
+                        _1: action._1
+                      };
+            default:
+              return prevState;
+          }
+      case "Active" :
           if (typeof action !== "object") {
             if (action === "ClockIn") {
               return {
@@ -73,85 +113,69 @@ function reduce(prevState, action) {
             } else {
               return prevState;
             }
+          } else if (action.TAG === "UpdateTask") {
+            return {
+                    TAG: "Active",
+                    _0: action._0
+                  };
+          } else {
+            return prevState;
           }
-          switch (action.TAG) {
-            case "Open" :
-                return prevState;
-            case "Fetched" :
-                break;
-            case "UpdateTask" :
-                return {
-                        TAG: "Idle",
-                        _0: action._0
-                      };
-            
-          }
-          break;
       case "Running" :
           var session = prevState._1;
           var task = prevState._0;
-          if (typeof action !== "object") {
-            if (action === "ClockIn") {
-              return prevState;
-            } else {
+          if (typeof action === "object") {
+            if (action.TAG === "UpdateTask") {
               return {
-                      TAG: "Idle",
-                      _0: {
-                        id: task.id,
-                        title: task.title,
-                        notes: task.notes,
-                        estimated_time: task.estimated_time,
-                        estimated_time_map: task.estimated_time_map,
-                        due_date: task.due_date,
-                        completed_at: task.completed_at,
-                        created_at: task.created_at,
-                        updated_at: task.updated_at,
-                        parent_task_id: task.parent_task_id,
-                        tracked_time: task.tracked_time,
-                        time_sessions: Belt_Array.concatMany([
-                              task.time_sessions,
-                              [{
-                                  id: session.id,
-                                  start_time: session.start_time,
-                                  end_time: DateTime.now(),
-                                  notes: session.notes,
-                                  interrupted_by_task_id: session.interrupted_by_task_id
-                                }]
-                            ])
-                      }
+                      TAG: "Running",
+                      _0: action._0,
+                      _1: session
                     };
+            } else {
+              return prevState;
             }
           }
-          switch (action.TAG) {
-            case "Open" :
-                return prevState;
-            case "Fetched" :
-                break;
-            case "UpdateTask" :
+          switch (action) {
+            case "ClockOut" :
                 return {
-                        TAG: "Running",
-                        _0: action._0,
-                        _1: session
+                        TAG: "Active",
+                        _0: {
+                          id: task.id,
+                          title: task.title,
+                          notes: task.notes,
+                          estimated_time: task.estimated_time,
+                          estimated_time_map: task.estimated_time_map,
+                          due_date: task.due_date,
+                          completed_at: task.completed_at,
+                          created_at: task.created_at,
+                          updated_at: task.updated_at,
+                          parent_task_id: task.parent_task_id,
+                          tracked_time: task.tracked_time,
+                          time_sessions: Belt_Array.concatMany([
+                                task.time_sessions,
+                                [{
+                                    id: session.id,
+                                    start_time: session.start_time,
+                                    end_time: DateTime.now(),
+                                    notes: session.notes,
+                                    interrupted_by_task_id: session.interrupted_by_task_id
+                                  }]
+                              ])
+                        }
                       };
-            
+            default:
+              return prevState;
           }
-          break;
+      case "Error" :
+          return prevState;
       
     }
   }
-  return prevState;
-}
-
-function dispatch(action) {
-  actionSignal.value = {
-    TAG: "OpenTask",
-    _0: action
-  };
 }
 
 var TaskFSM = {
-  reduce: reduce,
-  dispatch: dispatch
+  dispatch: dispatch,
+  reduce: reduce
 };
 
 function title(draft, title$1) {
@@ -231,6 +255,13 @@ var Reducers = {
   notes: notes
 };
 
+function dispatch$1(action) {
+  actionSignal.value = {
+    TAG: "NewTask",
+    _0: action
+  };
+}
+
 function reduce$1(prevState, action) {
   if (typeof action !== "object" && action === "Init") {
     return prevState;
@@ -254,88 +285,122 @@ function reduce$1(prevState, action) {
       return prevState;
     }
   }
-  if (prevState.TAG !== "Active") {
-    if (typeof action !== "object" || action.TAG !== "Saved") {
-      return prevState;
+  if (prevState.TAG === "Active") {
+    var draft = prevState._0;
+    if (typeof action !== "object") {
+      if (action === "Create") {
+        return prevState;
+      }
+      var promise = Core__Promise.$$catch(Task.createTask(draft).then(function (task) {
+                actionSignal.value = {
+                  TAG: "NewTask",
+                  _0: {
+                    TAG: "Saved",
+                    _0: task
+                  }
+                };
+                return Promise.resolve(task);
+              }), (function (error) {
+              console.error(error);
+              actionSignal.value = {
+                TAG: "NewTask",
+                _0: {
+                  TAG: "Error",
+                  _0: error,
+                  _1: draft
+                }
+              };
+              return Promise.reject(error);
+            }));
+      return {
+              TAG: "Saving",
+              _0: draft,
+              _1: promise
+            };
     } else {
-      return "Inactive";
-    }
-  }
-  var draft = prevState._0;
-  if (typeof action !== "object") {
-    if (action === "Create") {
-      return prevState;
-    }
-    var promise = Task.createTask(draft);
-    return {
-            TAG: "Saving",
-            _0: promise.then(function (task) {
-                  actionSignal.value = {
-                    TAG: "NewTask",
-                    _0: {
-                      TAG: "Saved",
-                      _0: task
-                    }
+      switch (action.TAG) {
+        case "Update" :
+            var field = action._0;
+            var tmp;
+            switch (field.TAG) {
+              case "Title" :
+                  tmp = title(draft, field._0);
+                  break;
+              case "EstimateHours" :
+                  tmp = estimatedTimeHours(draft, field._0);
+                  break;
+              case "EstimateMinutes" :
+                  tmp = estimatedTimeMinutes(draft, field._0);
+                  break;
+              case "Notes" :
+                  tmp = notes(draft, field._0);
+                  break;
+              case "ParentTask" :
+                  tmp = parentTask(draft, field._0);
+                  break;
+              case "DueDate" :
+                  tmp = dueDate(draft, field._0);
+                  break;
+              
+            }
+            return {
+                    TAG: "Active",
+                    _0: tmp
                   };
-                  return Promise.resolve(task);
-                })
-          };
+        case "Saved" :
+        case "Error" :
+            return prevState;
+        
+      }
+    }
   } else {
-    if (action.TAG !== "Update") {
+    var draft$1 = prevState._0;
+    if (typeof action !== "object") {
       return prevState;
     }
-    var field = action._0;
-    var tmp;
-    switch (field.TAG) {
-      case "Title" :
-          tmp = title(draft, field._0);
-          break;
-      case "EstimateHours" :
-          tmp = estimatedTimeHours(draft, field._0);
-          break;
-      case "EstimateMinutes" :
-          tmp = estimatedTimeMinutes(draft, field._0);
-          break;
-      case "Notes" :
-          tmp = notes(draft, field._0);
-          break;
-      case "ParentTask" :
-          tmp = parentTask(draft, field._0);
-          break;
-      case "DueDate" :
-          tmp = dueDate(draft, field._0);
-          break;
-      
+    switch (action.TAG) {
+      case "Saved" :
+          return {
+                  TAG: "Active",
+                  _0: {
+                    title: "",
+                    notes: "",
+                    estimated_time_map: draft$1.estimated_time_map,
+                    due_date: draft$1.due_date,
+                    parent_task_id: draft$1.parent_task_id
+                  }
+                };
+      case "Error" :
+          return {
+                  TAG: "Active",
+                  _0: action._1
+                };
+      default:
+        return prevState;
     }
-    return {
-            TAG: "Active",
-            _0: tmp
-          };
   }
 }
 
 var NewTaskFSM = {
   Reducers: Reducers,
+  dispatch: dispatch$1,
   reduce: reduce$1
 };
 
 var actionSignal$1 = Signals.signal("Init");
 
 function reduce$2(prevState, action) {
-  if (typeof prevState === "object") {
-    if (prevState.TAG === "Loading" && typeof action === "object") {
+  if (typeof action === "object") {
+    if (typeof prevState !== "object" || prevState.TAG !== "Loading") {
+      return prevState;
+    } else {
       return {
               TAG: "Tasks",
               _0: {
                 tasks: action._0
               }
             };
-    } else {
-      return prevState;
     }
-  }
-  if (typeof action === "object") {
-    return prevState;
   }
   if (action === "Init") {
     return prevState;
@@ -380,7 +445,7 @@ Signals.effect(function () {
       
     });
 
-function dispatch$1(action) {
+function dispatch$2(action) {
   actionSignal$1.value = action;
 }
 
@@ -400,13 +465,129 @@ var TasksFSM = {
   reduce: reduce$2,
   stateSignal: stateSignal,
   transitionSignal: transitionSignal,
-  dispatch: dispatch$1,
+  dispatch: dispatch$2,
   getTasks: getTasks
 };
 
-var stateSignal$1 = Signals.signal("Idle");
+var actionSignal$2 = Signals.signal("None");
 
 function reduce$3(prevState, action) {
+  if (typeof prevState !== "object") {
+    if (typeof action !== "object" || action.TAG !== "Toast") {
+      return prevState;
+    } else {
+      return {
+              TAG: "Active",
+              _0: [{
+                  toast: action._0,
+                  state: "Toasting"
+                }]
+            };
+    }
+  }
+  var msgs = prevState._0;
+  if (typeof action !== "object") {
+    return prevState;
+  }
+  switch (action.TAG) {
+    case "Toast" :
+        return {
+                TAG: "Active",
+                _0: Belt_Array.concatMany([
+                      [{
+                          toast: action._0,
+                          state: "Toasting"
+                        }],
+                      msgs
+                    ])
+              };
+    case "Update" :
+        var toastAction = action._1;
+        var targetIdx = action._0;
+        var msgs$1 = msgs.map(function (msg, idx) {
+              if (idx !== targetIdx) {
+                return msg;
+              }
+              var tmp;
+              tmp = toastAction === "Pop" ? "Popped" : "Dismissed";
+              return {
+                      toast: msg.toast,
+                      state: tmp
+                    };
+            });
+        return {
+                TAG: "Active",
+                _0: msgs$1
+              };
+    case "Remove" :
+        var targetIdx$1 = action._0;
+        var msgs$2 = msgs.filter(function (_m, idx) {
+              return idx !== targetIdx$1;
+            });
+        if (msgs$2.length !== 0) {
+          return {
+                  TAG: "Active",
+                  _0: msgs$2
+                };
+        } else {
+          return "Ready";
+        }
+    
+  }
+}
+
+var stateSignal$1 = Signals.signal("Ready");
+
+var transitionSignal$1 = Signals.signal({
+      prev: "Ready",
+      next: "Ready",
+      action: "None",
+      created_at: DateTime.now()
+    });
+
+Signals.effect(function () {
+      var action = actionSignal$2.value;
+      var prevState = stateSignal$1.peek();
+      var nextState = reduce$3(prevState, action);
+      if (prevState !== nextState) {
+        Signals.batch(function () {
+              stateSignal$1.value = nextState;
+              transitionSignal$1.value = {
+                prev: prevState,
+                next: nextState,
+                action: action,
+                created_at: DateTime.now()
+              };
+            });
+      }
+      
+    });
+
+function dispatch$3(action) {
+  actionSignal$2.value = action;
+}
+
+function getToasts() {
+  var state = stateSignal$1.value;
+  if (typeof state !== "object") {
+    return [];
+  } else {
+    return state._0;
+  }
+}
+
+var ToasterFSM = {
+  actionSignal: actionSignal$2,
+  reduce: reduce$3,
+  stateSignal: stateSignal$1,
+  transitionSignal: transitionSignal$1,
+  dispatch: dispatch$3,
+  getToasts: getToasts
+};
+
+var stateSignal$2 = Signals.signal("Idle");
+
+function reduce$4(prevState, action) {
   if (typeof action !== "object") {
     return prevState;
   }
@@ -457,7 +638,7 @@ function reduce$3(prevState, action) {
   
 }
 
-var transitionSignal$1 = Signals.signal({
+var transitionSignal$2 = Signals.signal({
       prev: "Idle",
       next: "Idle",
       action: "Init",
@@ -466,12 +647,12 @@ var transitionSignal$1 = Signals.signal({
 
 Signals.effect(function () {
       var action = actionSignal.value;
-      var prevState = stateSignal$1.peek();
-      var nextState = reduce$3(prevState, action);
+      var prevState = stateSignal$2.peek();
+      var nextState = reduce$4(prevState, action);
       if (prevState !== nextState) {
         Signals.batch(function () {
-              stateSignal$1.value = nextState;
-              transitionSignal$1.value = {
+              stateSignal$2.value = nextState;
+              transitionSignal$2.value = {
                 prev: prevState,
                 next: nextState,
                 action: action,
@@ -482,16 +663,28 @@ Signals.effect(function () {
       
     });
 
-function dispatch$2(action) {
-  actionSignal.value = action;
-}
-
 var AppFSM = {
-  stateSignal: stateSignal$1,
-  reduce: reduce$3,
-  transitionSignal: transitionSignal$1,
-  dispatch: dispatch$2
+  stateSignal: stateSignal$2,
+  reduce: reduce$4,
+  transitionSignal: transitionSignal$2,
+  dispatch: rootDispatch
 };
+
+Signals.effect(function () {
+      var match = transitionSignal$2.value;
+      var action = match.action;
+      var tmp = match.next;
+      if (typeof tmp === "object" && tmp.TAG !== "Task" && typeof action === "object" && action.TAG === "NewTask") {
+        var tmp$1 = action._0;
+        if (typeof tmp$1 === "object" && tmp$1.TAG === "Saved") {
+          Signals.batch(function () {
+                actionSignal$1.value = "Fetch";
+              });
+        }
+        
+      }
+      
+    });
 
 function newTaskState_encode(v) {
   if (typeof v !== "object") {
@@ -720,7 +913,7 @@ var Serialize = {
 };
 
 Signals.effect(function () {
-      var transition = transitionSignal$1.value;
+      var transition = transitionSignal$2.value;
       var state = transition.next;
       if (typeof state === "object" && state.TAG !== "Task") {
         var state$1 = state._0;
@@ -744,9 +937,11 @@ Signals.effect(function () {
 export {
   Actions ,
   actionSignal ,
+  rootDispatch ,
   TaskFSM ,
   NewTaskFSM ,
   TasksFSM ,
+  ToasterFSM ,
   AppFSM ,
   Serialize ,
 }

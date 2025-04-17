@@ -10,6 +10,7 @@ module Actions = {
       | ClockIn
       | ClockOut
       | UpdateTask(task)
+      | Error(exn, string)
   }
 
   module NewTask = {
@@ -27,6 +28,7 @@ module Actions = {
       | Update(field)
       | Save
       | Saved(task)
+      | Error(exn, draft)
   }
 
   module Tasks = {
@@ -34,6 +36,18 @@ module Actions = {
       | Init
       | Fetch
       | Fetched(array<task>)
+  }
+
+  module Toast = {
+    type toastAction =
+      | Pop
+      | Dismiss
+
+    type action =
+      | None
+      | Toast(Toast.t)
+      | Update(int, toastAction)
+      | Remove(int)
   }
 
   module App = {
@@ -53,22 +67,46 @@ type transition<'state, 'action> = {
 
 let actionSignal: Signal.t<Actions.App.action> = Signal.make(Actions.App.Init)
 
+let rootDispatch = (action: Actions.App.action): unit => {
+  actionSignal->Signal.set(action)
+}
+
 module TaskFSM = {
   type state =
     | Inactive
     | Fetching(promise<task>)
-    | Error(string, string)
-    | Idle(task)
+    | Active(task)
     | Running(task, session)
+    | Error(exn, string)
 
   type action = Actions.Task.action
+
+  let dispatch = (action: action): unit => {
+    rootDispatch(Actions.App.OpenTask(action))
+  }
 
   let reduce = (prevState: state, action: action): state => {
     switch (prevState, action) {
     | (_, Init) => prevState
-    | (Inactive, Open(taskId)) => Fetching(Task.fetchTask(taskId))
-    | (Fetching(_), Fetched(task)) => Idle(task)
-    | (Idle(task), ClockIn) =>
+    | (Inactive, Open(taskId)) => {
+        open Promise
+        let promise =
+          Task.fetchTask(taskId)
+          ->then(task => {
+            dispatch(Fetched(task))
+            resolve(task)
+          })
+          ->catch(error => {
+            Js.Console.error(error)
+            dispatch(Error(error, taskId))
+            reject(error)
+          })
+
+        Fetching(promise)
+      }
+    | (Fetching(_), Fetched(task)) => Active(task)
+    | (Fetching(_), Error(error, taskId)) => Error(error, taskId)
+    | (Active(task), ClockIn) =>
       Running(
         task,
         {
@@ -80,7 +118,7 @@ module TaskFSM = {
         },
       )
     | (Running(task, session), ClockOut) =>
-      Idle({
+      Active({
         ...task,
         time_sessions: [
           ...task.time_sessions,
@@ -91,17 +129,12 @@ module TaskFSM = {
         ],
       })
 
-    | (Idle(_), UpdateTask(nextTask)) => Idle(nextTask)
+    | (Active(_), UpdateTask(nextTask)) => Active(nextTask)
     | (Running(_, session), UpdateTask(nextTask)) => Running(nextTask, session)
     | (Running(_, _), ClockIn) => prevState
-    | (_, Fetched(_)) => prevState
     | (Inactive, _) => prevState
     | (_, _) => prevState
     }
-  }
-
-  let dispatch = (action: action): unit => {
-    actionSignal->Signal.set(Actions.App.OpenTask(action))
   }
 }
 
@@ -109,7 +142,7 @@ module NewTaskFSM = {
   type state =
     | Inactive
     | Active(draft)
-    | Saving(promise<task>)
+    | Saving(draft, promise<task>)
 
   type action = Actions.NewTask.action
 
@@ -151,6 +184,10 @@ module NewTaskFSM = {
     }
   }
 
+  let dispatch = (action: action) => {
+    rootDispatch(Actions.App.NewTask(action))
+  }
+
   let reduce = (prevState: state, action: action): state => {
     switch (prevState, action) {
     | (_, Init) => prevState
@@ -176,23 +213,36 @@ module NewTaskFSM = {
         | Notes(notes) => Reducers.notes(draft, notes)
         },
       )
-    | (Active(task), Save) => {
+    | (Active(draft), Save) => {
         open Promise
-        let promise = createTask(task)
-
-        Saving(
-          promise->then(task => {
-            actionSignal->Signal.set(Actions.App.NewTask(Actions.NewTask.Saved(task)))
+        let promise =
+          createTask(draft)
+          ->then(task => {
+            dispatch(Saved(task))
 
             resolve(task)
-          }),
-        )
+          })
+          ->catch(error => {
+            Js.Console.error(error)
+            dispatch(Error(error, draft))
+
+            reject(error)
+          })
+
+        Saving(draft, promise)
       }
-    | (Saving(_), Saved(_)) => Inactive
+    | (Saving(draft, _), Saved(_task)) =>
+      Active({
+        ...draft,
+        title: "",
+        notes: "",
+      })
+    | (Saving(_), Error(_error, draft)) => Active(draft)
     | (Active(_task), Create) => prevState
     | (Inactive, _) => prevState
     | (Active(_), Saved(_)) => prevState
     | (Saving(_), _) => prevState
+    | (_, Error(_, _)) => prevState
     }
   }
 }
@@ -212,7 +262,7 @@ module TasksFSM = {
 
   let reduce = (prevState: state, action: action): state => {
     switch (prevState, action) {
-    | (Empty, Fetch) => {
+    | (_, Fetch) => {
         open Promise
         let promise = fetchAll()
 
@@ -272,6 +322,101 @@ module TasksFSM = {
   }
 }
 
+module ToasterFSM = {
+  type toastState =
+    | Toasting
+    | Popped
+    | Dismissed
+
+  type toast = {
+    toast: Toast.t,
+    state: toastState,
+  }
+
+  type state =
+    | Ready
+    | Active(array<toast>)
+
+  type action = Actions.Toast.action
+  type transition = transition<state, action>
+
+  let actionSignal: Signal.t<action> = Signal.make(Actions.Toast.None)
+
+  let reduce = (prevState: state, action: action) => {
+    switch (prevState, action) {
+    | (Ready, Toast(msg)) => Active([{toast: msg, state: Toasting}])
+    | (Active(msgs), Toast(msg)) => Active([{toast: msg, state: Toasting}, ...msgs])
+    | (Active(msgs), Update(targetIdx, toastAction)) => {
+        let msgs = msgs->Array.mapWithIndex((msg, idx) => {
+          if idx === targetIdx {
+            {
+              toast: msg.toast,
+              state: switch toastAction {
+              | Pop => Popped
+              | Dismiss => Dismissed
+              },
+            }
+          } else {
+            msg
+          }
+        })
+        Active(msgs)
+      }
+    | (Active(msgs), Remove(targetIdx)) => {
+        let msgs = msgs->Array.filterWithIndex((_m, idx) => idx !== targetIdx)
+        switch msgs {
+        | [] => Ready
+        | msgs => Active(msgs)
+        }
+      }
+    | (_, None) => prevState
+    | (Ready, _) => prevState
+    }
+  }
+
+  let stateSignal: Signal.t<state> = Signal.make(Ready)
+
+  let transitionSignal: Signal.t<transition> = Signal.make({
+    next: Ready,
+    prev: Ready,
+    action: Actions.Toast.None,
+    created_at: DateTime.now(),
+  })
+
+  Signal.effect(() => {
+    let action = actionSignal->Signal.get
+    let prevState = stateSignal->Signal.peek
+    let nextState = reduce(prevState, action)
+
+    if prevState !== nextState {
+      Signal.batch(() => {
+        stateSignal->Signal.set(nextState)
+        transitionSignal->Signal.set({
+          next: nextState,
+          prev: prevState,
+          action,
+          created_at: DateTime.now(),
+        })
+      })
+    }
+
+    None
+  })
+
+  let dispatch = (action: action): unit => {
+    actionSignal->Signal.set(action)
+  }
+
+  let getToasts = () => {
+    let state = stateSignal->Signal.get
+
+    switch state {
+    | Ready => []
+    | Active(toasts) => toasts
+    }
+  }
+}
+
 module AppFSM = {
   type state =
     | Idle
@@ -311,6 +456,8 @@ module AppFSM = {
     created_at: DateTime.now(),
   })
 
+  let dispatch = rootDispatch
+
   Signal.effect(() => {
     let action = actionSignal->Signal.get
     let prevState = stateSignal->Signal.peek
@@ -330,11 +477,23 @@ module AppFSM = {
 
     None
   })
-
-  let dispatch = (action: action): unit => {
-    actionSignal->Signal.set(action)
-  }
 }
+
+Signal.effect(() => {
+  let {next: state, action} = AppFSM.transitionSignal->Signal.get
+
+  switch (state, action) {
+  | (NewTask(_), NewTask(Saved(_task))) =>
+    Signal.batch(() => {
+      // Open the task after creating
+      // AppFSM.dispatch(OpenTask(Open(task.id)))
+      TasksFSM.dispatch(Fetch)
+    })
+  | _ => ()
+  }
+
+  None
+})
 
 module Serialize = {
   @spice

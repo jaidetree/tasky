@@ -18,11 +18,17 @@
       {
         devShells.default = pkgs.mkShell {
           buildInputs = with pkgs; [
+            aider-chat
+
             elixir
             erlang
             lexical
 
             nodejs_23
+            clj-kondo
+            clojure
+            clojure-lsp
+            temurin-jre-bin-17
 
             # Optional but recommended development tools
             notify
