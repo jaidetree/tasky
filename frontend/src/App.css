@@ -2,6 +2,7 @@
 
 /* @source "../../backend/lib/tasky_web"; */
 @source "../**/*.cljs";
+@source "../public/index.html";
 
 @layer components {
   .btn {

@@ -1,3 +1,5 @@
 .cpcache
 .shadow-cljs
 build
+public/build
+target
