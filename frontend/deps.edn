@@ -1,6 +1,6 @@
 {:paths ["src/main"]
- :deps {dev.jaide/valhalla {:mvn/version "2025.3.29"}
-        dev.jaide/finity {:mvn/version "2025.4.16-SNAPSHOT"}
+ :deps {dev.jaide/valhalla {:mvn/version "2025.4.19"}
+        dev.jaide/finity {:mvn/version "2025.4.18-SNAPSHOT"}
         reagent/reagent {:mvn/version "1.3.0"}
         funcool/promesa {:mvn/version "11.0.678"}}
  :aliases {:cljs {:extra-paths ["src/test"]

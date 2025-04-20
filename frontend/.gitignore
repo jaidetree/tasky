@@ -1,5 +1,6 @@
 .cpcache
 .shadow-cljs
+.clj-kondo
 build
 public/build
 target

@@ -1,20 +1,11 @@
 (ns dev.jaide.tasky.core
   (:require
    [reagent.core :as r]
-   [reagent.dom.client :as rdomc]
-   ["#src/app.css"]
-   ["@heroicons/react/24/outline" :refer [BoltIcon]]))
-
-(defonce root (rdomc/create-root (js/document.getElementById "root")))
-
-(defn app
-  []
-  [:div
-   [:> BoltIcon
-    {:class "size-5"}]
-   "It works and reloads again even on mobile!"])
+   [reagent.dom :as rdom]
+   [dev.jaide.tasky.app :refer [app]]
+   ["#src/app.css"]))
 
 (defn -main
   []
-  (rdomc/render root [app]))
+  (rdom/render [app] (js/document.getElementById "root")))
 
