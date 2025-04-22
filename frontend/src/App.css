@@ -3,6 +3,30 @@
 @source "../public/index.html";
 @source "./**/*.cljs";
 
+@theme {
+  --animate-static-progress: static-progress 3s ease-in-out 1;
+
+  @keyframes static-progress {
+    0% {
+      width: 0%;
+    }
+    100% {
+      width: 100%;
+    }
+  }
+
+  --animate-kill: kill 500ms ease-in-out 1;
+
+  @keyframes kill {
+    from {
+      opacity: 100%;
+    }
+    from {
+      opacity: 0%;
+    }
+  }
+}
+
 @layer components {
   .btn {
     @apply px-4 py-2 inline-block;

@@ -2,8 +2,7 @@
   (:require
    [reagent.core :refer [class-names with-let]]
    [dev.jaide.finity.core :as fsm]
-   [dev.jaide.finity.core :as fsm]
-   [dev.jaide.tasky.events :refer [on]]
+   [dev.jaide.tasky.dom :refer [on timeout]]
    [dev.jaide.valhalla.core :as v]
    [dev.jaide.valhalla.js :as vjs]
    [dev.jaide.tasky.state-machines :refer [ratom-fsm]]))
@@ -75,23 +74,28 @@
               :dragging {:x (v/number)
                          :percent (v/number)}
               :deleting {:x (v/number)
-                         :percent (v/number)}}
+                         :percent (v/number)}
+              :holding {:x (v/number)
+                        :percent (v/number)}}
 
      :actions {:mouse-down {:x (v/number) :event (v/instance js/MouseEvent)}
                :mouse-move {:x (v/number) :percent (v/number)}
                :mouse-up {}
-               :cancel {}}
+               :cancel {}
+               :delete {}}
 
-     :effects  {:start-drag [{:thumb (v/instance js/HTMLButtonElement)
-                              :track (v/instance js/HTMLDivElement)}
-                             (fn [{:keys [] :as opts}]
-                               (let [dispose-mouse-move (on js/window :mousemove (mouse-move-handler opts))
-                                     dispose-mouse-up (on js/window :mouseup (mouse-up-handler opts))
-                                     dispose-key-up (on js/window :keyup (key-up-handler opts))]
-                                 (fn []
-                                   (dispose-mouse-move)
-                                   (dispose-mouse-up)
-                                   (dispose-key-up))))]}
+     :effects  {:start-drag
+                [{:thumb (v/instance js/HTMLButtonElement)
+                  :track (v/instance js/HTMLDivElement)}
+                 (fn [{:keys [] :as opts}]
+                   (let [dispose-mouse-move (on js/window :mousemove (mouse-move-handler opts))
+                         dispose-mouse-up (on js/window :mouseup (mouse-up-handler opts))
+                         dispose-key-up (on js/window :keyup (key-up-handler opts))]
+                     (fn []
+                       (dispose-mouse-move)
+                       (dispose-mouse-up)
+                       (dispose-key-up))))]}
+
      :transitions
      [{:from [:ready]
        :actions [:mouse-down]
@@ -106,57 +110,125 @@
                          :thumb thumb
                          :track track})})}
 
-      {:from [:dragging]
+      {:from [:dragging :holding]
        :actions [:mouse-move]
-       :to [:dragging]
+       :to [:dragging :holding]
        :do (fn [state action]
-             {:state :dragging
-              :context (merge
-                        (get state :context)
-                        {:x (:x action)
-                         :percent (:percent action)})
-              :effect (:effect state)})}
+             (let [context (merge
+                            (:context state)
+                            {:x (:x action)
+                             :percent (:percent action)})
+                   effect (get state :effect)]
+               (if (= (:percent action) 100)
+                 {:state :holding
+                  :context context
+                  :effect effect}
+                 {:state :dragging
+                  :context context
+                  :effect effect})))}
 
-      {:from [:dragging]
-       :actions [:cancel]
+      {:from [:dragging :holding]
+       :actions [:cancel :mouse-up]
        :to :ready}
 
-      {:from [:dragging]
-       :actions [:mouse-up]
-       :to [:deleting :ready]
-       :do (fn [state _action]
-             (if (>= (get-in state [:context :percent]) 100)
-               {:state :deleting
-                :context (:context state)}
-               {:state :ready}))}]}))
+      {:from [:holding]
+       :actions [:delete]
+       :to [:deleting]
+       :do (fn [state]
+             {:state :deleting
+              :context (:context state)})}]}))
 
-(defn create
-  [id]
-  (doto (ratom-fsm delete-rocker-fsm-spec
-                   {:id (str "delete-rocker-" id)
-                    :initial {:state :ready
-                              :context {}}})
-    (fsm/subscribe
-     (fn [{:keys [next action]}]
-       #_(cljs.pprint/pprint action)))))
+(comment
+  (fsm/spec->diagram delete-rocker-fsm-spec))
+
+(def countdown-fsm-spec
+  (fsm/define
+    {:id :countdown-timer
+
+     :initial {:state :inactive
+               :context {}}
+
+     :states {:inactive {}
+              :active {:remaining (v/number)}
+              :complete {}}
+
+     :actions {:start {:seconds (v/number)}
+               :tick {}}
+
+     :effects {:set-timer
+               [{:remaining (v/number)}
+                (fn [{:keys [dispatch]}]
+                  (timeout 1000
+                           #(dispatch {:type :tick})))]}
+
+     :transitions
+     [{:from [:inactive]
+       :actions [:start]
+       :to [:active]
+       :do (fn [_state {:keys [seconds]}]
+             {:state :active
+              :context {:remaining seconds}
+              :effect {:id :set-timer
+                       :remaining seconds}})}
+
+      {:from [:active]
+       :actions [:tick]
+       :to [:complete :active]
+       :do (fn [{:keys [state context]} _action]
+             (let [remaining (dec (:remaining context))]
+               (if (zero? remaining)
+                 {:state :complete}
+                 {:state state
+                  :context {:remaining remaining}
+                  :effect {:id :set-timer
+                           :remaining remaining}})))}]}))
 
 (defn color-mix
   [percent color-a color-b]
   (str "color-mix(in srgb, " color-a ", " color-b " " (.toFixed percent 2) "%)"))
 
+(defn dragging?
+  [state]
+  (contains? #{:dragging :holding :deleting} state))
+
+(defn hold-progress
+  [{:keys [fsm]}]
+  (with-let [duration 2
+             timer-fsm (doto (ratom-fsm countdown-fsm-spec
+                                        {:initial {:state :inactive}})
+                         (fsm/subscribe
+                          (fn [{:keys [next]}]
+                            (when (= (:state next) :complete)
+                              (fsm/dispatch fsm {:type :delete}))))
+                         (fsm/dispatch {:type :start :seconds duration}))]
+    (let [remaining (get timer-fsm :remaining)]
+      [:div.absolute
+       {:class "absolute left-0 right-0 bottom-0 top-0"}
+       [:div
+        {:class "absolute left-0 bottom-0 top-0 animate-static-progress bg-red-900"
+         :style {:animation-duration (str duration "s")}}]
+       [:div
+        {:class "absolute left-0 right-0 bottom-0 top-0 flex flex-col justify-center items-center text-white/50 font-semibold"}
+        remaining]])
+    (finally
+      (fsm/destroy timer-fsm))))
+
 (defn track
   [{:keys [fsm]} & children]
   (let [{:keys [state context]} @fsm]
-    (into [:div
-           {:class (class-names
-                    "rounded-full w-16 p-1"
-                    (when (not= state :tracking)
-                      "bg-zinc-700"))
-            :style {:background (when (= state :dragging)
-                                  (color-mix (get context :percent)
-                                             "var(--color-zinc-700)"
-                                             "var(--color-red-900)"))}}]
-          children)))
+    (into
+     [:div.relative.overflow-hidden
+      {:class (class-names
+               "rounded-full w-16 p-1"
+               (when (not (dragging? state))
+                 "bg-zinc-700"))
+       :style {:background (when (dragging? state)
+                             (color-mix (get context :percent)
+                                        "var(--color-zinc-700)"
+                                        "var(--color-red-800)"))}}]
+     (conj children
+           (when (= state :holding)
+             [hold-progress {:fsm fsm}])))))
 
 (defn thumb
   [{:keys [fsm]}]
@@ -166,33 +238,33 @@
     [:button
      {:type "button"
       :class (class-names "block rounded-full size-4"
-                          (when (not= state :dragging)
+                          (when (not (dragging? state))
                             "bg-slate-500"))
       :style {:transform (str "translateX(" x "px)")
-              :background (when (= state :dragging)
+              :background (when (dragging? state)
                             (color-mix percent "var(--color-slate-500)" "var(--color-red-500)"))}
       :on-mousedown #(fsm/dispatch fsm {:type :mouse-down :event % :x 0})}
      [:span.sr-only "Drag to the right to delete"]]))
 
-(defn create-fsm
+(defn create-rocker-fsm
   [{:keys [id on-delete]}]
   (let [fsm (ratom-fsm delete-rocker-fsm-spec
                        {:id (str "delete-rocker-" id)
                         :initial {:state :ready
                                   :context {}}})
-        dispose (fsm/subscribe
-                 fsm
-                 (fn [{:keys [prev next]}]
-                   (when (and (= (:state next) :deleting)
-                              (not= (:state prev) (:state next)))
-                     (on-delete))))]
+        unsubscribe (fsm/subscribe
+                     fsm
+                     (fn [{:keys [prev next]}]
+                       (when (and (= (:state next) :deleting)
+                                  (not= (:state prev) (:state next)))
+                         (on-delete))))]
     [fsm (fn []
-           (dispose)
+           (unsubscribe)
            (fsm/destroy fsm))]))
 
 (defn delete-rocker
   [{:keys [on-delete]}]
-  (with-let [[fsm dispose] (create-fsm {:on-delete on-delete})]
+  (with-let [[fsm dispose] (create-rocker-fsm {:on-delete on-delete})]
     [track
      {:fsm fsm}
      [thumb

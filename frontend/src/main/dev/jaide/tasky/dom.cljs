@@ -1,4 +1,4 @@
-(ns dev.jaide.tasky.events)
+(ns dev.jaide.tasky.dom)
 
 (defn on
   [target event-name handler & {:as opts}]
@@ -6,5 +6,12 @@
     (.addEventListener target event-str handler (clj->js (or opts {})))
     (fn off [_]
       (.removeEventListener target event-str handler))))
+
+(defn timeout
+  [ms f]
+  (let [timer (js/setTimeout f ms)]
+    (fn dispose
+      []
+      (js/clearTimeout timer))))
 
 

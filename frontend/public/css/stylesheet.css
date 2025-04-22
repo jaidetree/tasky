@@ -8,26 +8,16 @@
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
       "Courier New", monospace;
     --color-red-500: oklch(63.7% 0.237 25.331);
+    --color-red-800: oklch(44.4% 0.177 26.899);
     --color-red-900: oklch(39.6% 0.141 25.723);
     --color-blue-500: oklch(62.3% 0.214 259.815);
     --color-slate-500: oklch(55.4% 0.046 257.417);
     --color-slate-600: oklch(44.6% 0.043 257.281);
     --color-slate-700: oklch(37.2% 0.044 257.287);
-    --color-slate-950: oklch(12.9% 0.042 264.695);
     --color-gray-200: oklch(92.8% 0.006 264.531);
-    --color-gray-700: oklch(37.3% 0.034 259.733);
-    --color-gray-800: oklch(27.8% 0.033 256.848);
-    --color-gray-950: oklch(13% 0.028 261.692);
     --color-zinc-700: oklch(37% 0.013 285.805);
-    --color-zinc-800: oklch(27.4% 0.006 286.033);
-    --color-zinc-900: oklch(21% 0.006 285.885);
-    --color-zinc-950: oklch(14.1% 0.005 285.823);
-    --color-stone-500: oklch(55.3% 0.013 58.071);
     --color-stone-700: oklch(37.4% 0.01 67.558);
-    --color-stone-800: oklch(26.8% 0.007 34.298);
     --color-stone-900: oklch(21.6% 0.006 56.043);
-    --color-stone-950: oklch(14.7% 0.004 49.25);
-    --color-black: #000;
     --color-white: #fff;
     --spacing: 0.25rem;
     --container-4xl: 56rem;
@@ -35,13 +25,17 @@
     --text-xl--line-height: calc(1.75 / 1.25);
     --text-2xl: 1.5rem;
     --text-2xl--line-height: calc(2 / 1.5);
+    --font-weight-semibold: 600;
     --font-weight-bold: 700;
     --radius-sm: 0.25rem;
     --radius-lg: 0.5rem;
+    --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
     --default-transition-duration: 150ms;
     --default-transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     --default-font-family: var(--font-sans);
     --default-mono-font-family: var(--font-mono);
+    --animate-static-progress: static-progress 3s ease-in-out 1;
+    --animate-kill: kill 500ms ease-in-out 1;
   }
 }
 @layer base {
@@ -201,6 +195,24 @@
     white-space: nowrap;
     border-width: 0;
   }
+  .absolute {
+    position: absolute;
+  }
+  .relative {
+    position: relative;
+  }
+  .top-0 {
+    top: calc(var(--spacing) * 0);
+  }
+  .right-0 {
+    right: calc(var(--spacing) * 0);
+  }
+  .bottom-0 {
+    bottom: calc(var(--spacing) * 0);
+  }
+  .left-0 {
+    left: calc(var(--spacing) * 0);
+  }
   .mx-auto {
     margin-inline: auto;
   }
@@ -232,9 +244,6 @@
   .w-16 {
     width: calc(var(--spacing) * 16);
   }
-  .w-20 {
-    width: calc(var(--spacing) * 20);
-  }
   .w-\[30rem\] {
     width: 30rem;
   }
@@ -259,6 +268,12 @@
   .transform {
     transform: var(--tw-rotate-x,) var(--tw-rotate-y,) var(--tw-rotate-z,) var(--tw-skew-x,) var(--tw-skew-y,);
   }
+  .animate-kill {
+    animation: var(--animate-kill);
+  }
+  .animate-static-progress {
+    animation: var(--animate-static-progress);
+  }
   .flex-col {
     flex-direction: column;
   }
@@ -279,6 +294,9 @@
   }
   .justify-between {
     justify-content: space-between;
+  }
+  .justify-center {
+    justify-content: center;
   }
   .justify-end {
     justify-content: flex-end;
@@ -314,61 +332,28 @@
   .rounded-sm {
     border-radius: var(--radius-sm);
   }
-  .bg-black {
-    background-color: var(--color-black);
-  }
   .bg-blue-500 {
     background-color: var(--color-blue-500);
   }
   .bg-gray-200 {
     background-color: var(--color-gray-200);
   }
-  .bg-gray-700 {
-    background-color: var(--color-gray-700);
+  .bg-red-500\/25 {
+    background-color: color-mix(in srgb, oklch(63.7% 0.237 25.331) 25%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-red-500) 25%, transparent);
+    }
   }
-  .bg-gray-800 {
-    background-color: var(--color-gray-800);
-  }
-  .bg-gray-950 {
-    background-color: var(--color-gray-950);
-  }
-  .bg-red-500 {
-    background-color: var(--color-red-500);
+  .bg-red-900 {
+    background-color: var(--color-red-900);
   }
   .bg-slate-500 {
     background-color: var(--color-slate-500);
-  }
-  .bg-slate-600 {
-    background-color: var(--color-slate-600);
-  }
-  .bg-slate-700 {
-    background-color: var(--color-slate-700);
-  }
-  .bg-slate-950 {
-    background-color: var(--color-slate-950);
-  }
-  .bg-stone-500 {
-    background-color: var(--color-stone-500);
-  }
-  .bg-stone-700 {
-    background-color: var(--color-stone-700);
   }
   .bg-stone-700\/20 {
     background-color: color-mix(in srgb, oklch(37.4% 0.01 67.558) 20%, transparent);
     @supports (color: color-mix(in lab, red, red)) {
       background-color: color-mix(in oklab, var(--color-stone-700) 20%, transparent);
-    }
-  }
-  .bg-stone-700\/25 {
-    background-color: color-mix(in srgb, oklch(37.4% 0.01 67.558) 25%, transparent);
-    @supports (color: color-mix(in lab, red, red)) {
-      background-color: color-mix(in oklab, var(--color-stone-700) 25%, transparent);
-    }
-  }
-  .bg-stone-700\/50 {
-    background-color: color-mix(in srgb, oklch(37.4% 0.01 67.558) 50%, transparent);
-    @supports (color: color-mix(in lab, red, red)) {
-      background-color: color-mix(in oklab, var(--color-stone-700) 50%, transparent);
     }
   }
   .bg-stone-700\/70 {
@@ -377,32 +362,11 @@
       background-color: color-mix(in oklab, var(--color-stone-700) 70%, transparent);
     }
   }
-  .bg-stone-800 {
-    background-color: var(--color-stone-800);
-  }
-  .bg-stone-800\/50 {
-    background-color: color-mix(in srgb, oklch(26.8% 0.007 34.298) 50%, transparent);
-    @supports (color: color-mix(in lab, red, red)) {
-      background-color: color-mix(in oklab, var(--color-stone-800) 50%, transparent);
-    }
-  }
-  .bg-stone-950 {
-    background-color: var(--color-stone-950);
-  }
   .bg-white {
     background-color: var(--color-white);
   }
   .bg-zinc-700 {
     background-color: var(--color-zinc-700);
-  }
-  .bg-zinc-800 {
-    background-color: var(--color-zinc-800);
-  }
-  .bg-zinc-900 {
-    background-color: var(--color-zinc-900);
-  }
-  .bg-zinc-950 {
-    background-color: var(--color-zinc-950);
   }
   .p-1 {
     padding: calc(var(--spacing) * 1);
@@ -443,21 +407,51 @@
     --tw-font-weight: var(--font-weight-bold);
     font-weight: var(--font-weight-bold);
   }
+  .font-semibold {
+    --tw-font-weight: var(--font-weight-semibold);
+    font-weight: var(--font-weight-semibold);
+  }
   .text-white {
     color: var(--color-white);
+  }
+  .text-white\/50 {
+    color: color-mix(in srgb, #fff 50%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      color: color-mix(in oklab, var(--color-white) 50%, transparent);
+    }
+  }
+  .opacity-0 {
+    opacity: 0%;
+  }
+  .opacity-100 {
+    opacity: 100%;
   }
   .shadow-md {
     --tw-shadow: 0 4px 6px -1px var(--tw-shadow-color, rgb(0 0 0 / 0.1)), 0 2px 4px -2px var(--tw-shadow-color, rgb(0 0 0 / 0.1));
     box-shadow: var(--tw-inset-shadow), var(--tw-inset-ring-shadow), var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+  }
+  .transition {
+    transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to, opacity, box-shadow, transform, translate, scale, rotate, filter, -webkit-backdrop-filter, backdrop-filter;
+    transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
+    transition-duration: var(--tw-duration, var(--default-transition-duration));
   }
   .transition-all {
     transition-property: all;
     transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
     transition-duration: var(--tw-duration, var(--default-transition-duration));
   }
+  .transition-opacity {
+    transition-property: opacity;
+    transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
+    transition-duration: var(--tw-duration, var(--default-transition-duration));
+  }
   .duration-500 {
     --tw-duration: 500ms;
     transition-duration: 500ms;
+  }
+  .ease-in-out {
+    --tw-ease: var(--ease-in-out);
+    transition-timing-function: var(--ease-in-out);
   }
   .dark\:bg-slate-600 {
     @media (prefers-color-scheme: dark) {
@@ -588,6 +582,26 @@
   syntax: "*";
   inherits: false;
 }
+@property --tw-ease {
+  syntax: "*";
+  inherits: false;
+}
+@keyframes static-progress {
+  0% {
+    width: 0%;
+  }
+  100% {
+    width: 100%;
+  }
+}
+@keyframes kill {
+  from {
+    opacity: 100%;
+  }
+  from {
+    opacity: 0%;
+  }
+}
 @layer properties {
   @supports ((-webkit-hyphens: none) and (not (margin-trim: inline))) or ((-moz-orient: inline) and (not (color:rgb(from red r g b)))) {
     *, ::before, ::after, ::backdrop {
@@ -613,6 +627,7 @@
       --tw-ring-offset-color: #fff;
       --tw-ring-offset-shadow: 0 0 #0000;
       --tw-duration: initial;
+      --tw-ease: initial;
     }
   }
 }

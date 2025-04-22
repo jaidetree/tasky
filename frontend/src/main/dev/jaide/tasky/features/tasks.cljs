@@ -1,6 +1,8 @@
 (ns dev.jaide.tasky.features.tasks
   (:require
+   [reagent.core :refer [class-names]]
    [dev.jaide.finity.core :as fsm]
+   [dev.jaide.tasky.dom :refer [timeout]]
    [dev.jaide.tasky.state-machines :refer [ratom-fsm]]
    [dev.jaide.tasky.state.app-fsm :refer [app-fsm]]
    [dev.jaide.tasky.tasks :as tasks]
@@ -11,13 +13,6 @@
 
 (def error-validator
   (v/instance js/Error))
-
-(defn timeout
-  [ms f]
-  (let [timer (js/setTimeout f ms)]
-    (fn dispose
-      []
-      (js/clearTimeout timer))))
 
 (def task-fsm-spec
   (fsm/define
@@ -71,7 +66,7 @@
                             #_(-> (tasks/delete-task (:id task))
                                   (p/catch #(dispatch {:type :error :error %})))
                             (timeout
-                             500
+                             1000
                              #(dispatch {:type :deleted}))))]}
 
      :transitions
@@ -171,30 +166,36 @@
           task (get task-fsm :task)
           form-id (str "task-form-" (:id task))]
       [:<>
-       [:tr
-        [td {:class "text-left"}
-         [:div
-          {:style {:paddingLeft (str level "rem")}}
-          [:form.flex.flex-row.flex-nowrap.gap-2
-           {:id form-id
-            :on-input #(update-task task-fsm %)}
-           [:input
-            {:type "checkbox"
-             :name "complete"
-             :checked (some? (:completed_at task))}]
-           [:input.flex-grow
-            {:name "title"
-             :value (:title task)}]]]]
-        [td {}
-         (or (:due_date task) "-")]
-        [td {}
-         (:estimated_time task)]
-        [td {}
-         (:tracked_time task)]
-        [td {}
-         [delete-rocker
-          {:id (str "task-" (:id task))
-           :on-delete #(fsm/dispatch task-fsm {:type :delete})}]]]
+       (when (not= (:state @task-fsm) :deleted)
+         [:tr
+          {:class (class-names
+                   "transition transition-opacity duration-500 ease-in-out"
+                   (if (= (:state @task-fsm) :deleting)
+                     "bg-red-500/25 opacity-0"
+                     "opacity-100"))}
+          [td {:class "text-left"}
+           [:div
+            {:style {:paddingLeft (str level "rem")}}
+            [:form.flex.flex-row.flex-nowrap.gap-2
+             {:id form-id
+              :on-input #(update-task task-fsm %)}
+             [:input
+              {:type "checkbox"
+               :name "complete"
+               :checked (some? (:completed_at task))}]
+             [:input.flex-grow
+              {:name "title"
+               :value (:title task)}]]]]
+          [td {}
+           (or (:due_date task) "-")]
+          [td {}
+           (:estimated_time task)]
+          [td {}
+           (:tracked_time task)]
+          [td {}
+           [delete-rocker
+            {:id (str "task-" (:id task))
+             :on-delete #(fsm/dispatch task-fsm {:type :delete})}]]])
 
        (for [task subtasks]
          [task-row
