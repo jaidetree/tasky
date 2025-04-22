@@ -81,7 +81,17 @@
               :body (-> {:task task}
                         (clj->js)
                         (js/JSON.stringify))}]
-    (p/-> (js/fetch (str "/api/tasks" (:id task))
+    (p/-> (js/fetch (str "/api/tasks/" (:id task))
+                    (clj->js opts))
+          (.json)
+          (js->clj :keywordize-keys true))))
+
+(defn delete-task
+  [task-id]
+  (let [opts {:method :DELETE
+              :headers {"Content-Type" "application/json"}
+              :body "{}"}]
+    (p/-> (js/fetch (str "api/tasks/" task-id)
                     (clj->js opts))
           (.json)
           (js->clj :keywordize-keys true))))

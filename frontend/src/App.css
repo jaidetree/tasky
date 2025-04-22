@@ -1,7 +1,7 @@
-@import "tailwindcss";
+@import "tailwindcss" source("./main");
 
-@source "../public/js/**/*.js";
 @source "../public/index.html";
+@source "./**/*.cljs";
 
 @layer components {
   .btn {

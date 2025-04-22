@@ -10,7 +10,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
-    tailwindcss(),
     preact({
       include: ["build/app/**.js"],
     }),

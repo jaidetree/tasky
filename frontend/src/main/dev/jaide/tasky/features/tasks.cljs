@@ -4,13 +4,20 @@
    [dev.jaide.tasky.state-machines :refer [ratom-fsm]]
    [dev.jaide.tasky.state.app-fsm :refer [app-fsm]]
    [dev.jaide.tasky.tasks :as tasks]
+   [dev.jaide.tasky.views.delete-rocker :refer [delete-rocker]]
    [dev.jaide.valhalla.core :as v]
    [promesa.core :as p]
-   [reagent.core :refer [with-let]]
-   ["@heroicons/react/24/outline" :refer [TrashIcon]]))
+   [reagent.core :refer [with-let]]))
 
 (def error-validator
   (v/instance js/Error))
+
+(defn timeout
+  [ms f]
+  (let [timer (js/setTimeout f ms)]
+    (fn dispose
+      []
+      (js/clearTimeout timer))))
 
 (def task-fsm-spec
   (fsm/define
@@ -22,7 +29,9 @@
      :states {:empty {}
               :ready {:task tasks/task-validator
                       :error (v/nilable error-validator)}
-              :saving {:task tasks/task-validator}}
+              :saving {:task tasks/task-validator}
+              :deleting {:task tasks/task-validator}
+              :deleted {}}
 
      :actions {:init {:task tasks/task-validator}
                :update {:data (v/hash-map
@@ -34,16 +43,18 @@
                :save {}
                :updated {:task tasks/task-validator}
                :error {:error error-validator}
-               :delete {}}
+               :delete {}
+               :deleted {}}
 
-     :effects {:debounce [{:delay (v/number) :timestamp (v/number)}
+     :effects {:debounce [{:delay (v/number)
+                           :timestamp (v/number)
+                           :action (v/keyword)}
                           (fn [{:keys [dispatch effect]}]
                             (let [ms (get effect :delay)
-                                  timer (js/setTimeout
-                                         #(dispatch {:type :save})
-                                         ms)]
-                              (fn []
-                                (js/clearTimeout timer))))]
+                                  action (get effect :action)]
+                              (timeout
+                               #(dispatch {:type action})
+                               ms)))]
 
                :save [{:timestamp (v/number)}
                       (fn [{{{:keys [task]} :context} :state :keys [dispatch _effect]}]
@@ -52,7 +63,16 @@
                               (p/then #(dispatch {:type :updated :task %}))
                               (p/catch #(dispatch {:type :error :error %})))
                           (fn []
-                            (.abort abort-controller))))]}
+                            (.abort abort-controller))))]
+
+               :delete [{:task tasks/task-validator}
+                        (fn [{:keys [dispatch effect]}]
+                          (let [task (:task effect)]
+                            #_(-> (tasks/delete-task (:id task))
+                                  (p/catch #(dispatch {:type :error :error %})))
+                            (timeout
+                             500
+                             #(dispatch {:type :deleted}))))]}
 
      :transitions
      [{:from [:empty]
@@ -76,7 +96,8 @@
                                       task))}
                 :effect {:id :debounce
                          :timestamp (js/Date.now)
-                         :delay 500}}))}
+                         :delay 500
+                         :action :save}}))}
 
       {:from [:ready]
        :actions [:save]
@@ -95,13 +116,25 @@
               :context {:task (:task action)
                         :error nil}})}
 
-      {:from [:saving]
+      {:from [:saving :deleting]
        :actions [:error]
        :to [:ready]
        :do (fn [state action]
              {:state :ready
               :context {:task (get-in state [:context :task])
-                        :error (get :error action)}})}]}))
+                        :error (get :error action)}})}
+
+      {:from [:ready]
+       :actions [:delete]
+       :to [:deleting]
+       :do (fn [state _action]
+             {:state :deleting
+              :context {:task (get-in state [:context :task])}
+              :effect {:id :delete :task (get-in state [:context :task])}})}
+
+      {:from [:deleting]
+       :actions [:deleted]
+       :to :deleted}]}))
 
 (defn th
   [& children]
@@ -159,12 +192,9 @@
         [td {}
          (:tracked_time task)]
         [td {}
-         [:button
-          {:class "text-red-400"
-           :type :button
-           :on-click #(fsm/dispatch task-fsm {:type :delete})}
-          [:> TrashIcon
-           {:class "inline-block size-4"}]]]]
+         [delete-rocker
+          {:id (str "task-" (:id task))
+           :on-delete #(fsm/dispatch task-fsm {:type :delete})}]]]
 
        (for [task subtasks]
          [task-row
