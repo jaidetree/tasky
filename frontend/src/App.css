@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-@source "./**/*.cljs";
+@source "../public/js/**/*.js";
 @source "../public/index.html";
 
 @layer components {

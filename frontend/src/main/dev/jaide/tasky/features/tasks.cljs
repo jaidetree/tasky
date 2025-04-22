@@ -6,7 +6,8 @@
    [dev.jaide.tasky.tasks :as tasks]
    [dev.jaide.valhalla.core :as v]
    [promesa.core :as p]
-   [reagent.core :refer [with-let]]))
+   [reagent.core :refer [with-let]]
+   ["@heroicons/react/24/outline" :refer [TrashIcon]]))
 
 (def error-validator
   (v/instance js/Error))
@@ -32,7 +33,8 @@
                                 (v/boolean)))}
                :save {}
                :updated {:task tasks/task-validator}
-               :error {:error error-validator}}
+               :error {:error error-validator}
+               :delete {}}
 
      :effects {:debounce [{:delay (v/number) :timestamp (v/number)}
                           (fn [{:keys [dispatch effect]}]
@@ -110,7 +112,7 @@
 (defn td
   [{:as attrs} & children]
   (into
-   [:td.py-3.px-4
+   [:td.py-2.px-4
     (or attrs {})]
    children))
 
@@ -147,7 +149,7 @@
             {:type "checkbox"
              :name "complete"
              :checked (some? (:completed_at task))}]
-           [:input
+           [:input.flex-grow
             {:name "title"
              :value (:title task)}]]]]
         [td {}
@@ -157,11 +159,13 @@
         [td {}
          (:tracked_time task)]
         [td {}
-         [:form
-          [:input
-           {:type "checkbox"
-            :name "complete"
-            :checked (some? (:completed_at task))}]]]]
+         [:button
+          {:class "text-red-400"
+           :type :button
+           :on-click #(fsm/dispatch task-fsm {:type :delete})}
+          [:> TrashIcon
+           {:class "inline-block size-4"}]]]]
+
        (for [task subtasks]
          [task-row
           {:key (:id task)
