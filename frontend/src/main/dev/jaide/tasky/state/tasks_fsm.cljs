@@ -8,7 +8,7 @@
 
 (def tasks-fsm-spec
   (fsm/define
-    {:id :router
+    {:id :tasks
      :initial {:state :empty
                :context {:error nil}}
 
@@ -18,6 +18,7 @@
 
      :actions {:fetch {}
                :fetched {:tasks tasks-validator}
+               :refresh {}
                :error {:error (v/instance js/Error.)}}
 
      :effects {:fetch
@@ -38,7 +39,7 @@
               :context {}
               :effect {:id :fetch}})}
 
-      {:from [:loading]
+      {:from [:loading :tasks]
        :actions [:fetched]
        :to [:tasks]
        :do (fn [state action]
@@ -50,7 +51,15 @@
        :to [:empty]
        :do (fn [state action]
              {:state :empty
-              :context {:error (:error action)}})}]}))
+              :context {:error (:error action)}})}
+
+      {:from [:tasks]
+       :actions [:refresh]
+       :to [:tasks]
+       :do (fn [{:keys [state context]} action]
+             {:state state
+              :context context
+              :effect {:id :fetch}})}]}))
 
 (def tasks-fsm (ratom-fsm tasks-fsm-spec))
 

@@ -47,3 +47,41 @@
   (p/-> (js/fetch (str "/api/tasks/" task-id))
         (.json)
         (js->clj :keywordize-keys true)))
+
+(def task-draft-validator
+  (v/record
+   {:id (v/string)
+    :title (v/string)
+    :notes (v/string)
+    :estimated_time_map (v/record
+                         {:hours (v/string->number
+                                  {:accept-numbers true})
+                          :minutes (v/string->number
+                                    {:accept-numbers true})})
+    :due_date (v/string)
+    :parent_task_id (v/string)}))
+
+(defn create-task
+  [task]
+  (let [opts {:method :POST
+              :headers {"Content-Type" "application/json"}
+              :body (-> {:task task}
+                        (clj->js)
+                        (js/JSON.stringify))}]
+    (p/-> (js/fetch (str "/api/tasks")
+                    (clj->js opts))
+          (.json)
+          (js->clj :keywordize-keys true))))
+
+(defn update-task
+  [task & {:keys [signal]}]
+  (let [opts {:signal signal
+              :method :PUT
+              :headers {"Content-Type" "application/json"}
+              :body (-> {:task task}
+                        (clj->js)
+                        (js/JSON.stringify))}]
+    (p/-> (js/fetch (str "/api/tasks" (:id task))
+                    (clj->js opts))
+          (.json)
+          (js->clj :keywordize-keys true))))

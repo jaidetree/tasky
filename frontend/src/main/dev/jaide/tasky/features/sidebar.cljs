@@ -7,7 +7,7 @@
 
 (defn sidebar
   []
-  (let [state (get app-fsm :state)
+  (let [state (:state @app-fsm)
         is-active (not= state :closed)]
     [:div
      {:class (class-names
