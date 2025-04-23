@@ -47,8 +47,6 @@
             echo "Postgres version: $(postgres --version)"
             echo "Node version: $(node --version)"
             echo "File watching tool: ${notify.name}"
-
-            export PATH="./frontend/node_modubles/.bin:$PATH"
           '';
         };
       }
