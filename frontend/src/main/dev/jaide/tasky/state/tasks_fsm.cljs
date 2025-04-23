@@ -1,10 +1,11 @@
 (ns dev.jaide.tasky.state.tasks-fsm
   (:require
-   [promesa.core :as p]
    [dev.jaide.finity.core :as fsm]
+   [dev.jaide.tasky.state-machines :refer [ratom-fsm]]
+   [dev.jaide.tasky.state.task-fsm :refer [create-task-fsm]]
+   [dev.jaide.tasky.tasks :refer [fetch-tasks tasks-validator]]
    [dev.jaide.valhalla.core :as v]
-   [dev.jaide.tasky.tasks :refer [tasks-validator fetch-tasks]]
-   [dev.jaide.tasky.state-machines :refer [ratom-fsm]]))
+   [promesa.core :as p]))
 
 (def tasks-fsm-spec
   (fsm/define
@@ -14,7 +15,9 @@
 
      :states {:empty {:error (v/nilable (v/instance js/Error))}
               :loading {}
-              :tasks {:tasks tasks-validator}}
+              :tasks {:tasks (v/vector
+                              (v/instance fsm/AtomFSM))
+                      :id (v/nilable (v/string))}}
 
      :actions {:fetch {}
                :fetched {:tasks tasks-validator}
@@ -44,7 +47,9 @@
        :to [:tasks]
        :do (fn [state action]
              {:state :tasks
-              :context {:tasks (:tasks action)}})}
+              :context {:tasks (->> (:tasks action)
+                                    (map create-task-fsm)
+                                    (vec))}})}
 
       {:from [:loading]
        :actions [:error]
@@ -66,11 +71,11 @@
 
 (fsm/dispatch tasks-fsm {:type :fetch})
 
-(fsm/subscribe
- tasks-fsm
- (fn [{:keys [action next]}]
-   (cljs.pprint/pprint {:action action
-                        :state next})))
+#_(fsm/subscribe
+   tasks-fsm
+   (fn [{:keys [action next]}]
+     (cljs.pprint/pprint {:action action
+                          :state next})))
 
 (comment
   @tasks-fsm)

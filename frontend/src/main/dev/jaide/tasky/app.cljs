@@ -9,7 +9,7 @@
   (let [{:keys [state context]} @tasks-fsm]
     [:div.flex.flex-row.items-stretch.min-h-screen
      (case state
-       :tasks [:main.max-w-4xl.flex-grow.mx-auto.px-4.py-20.overflow-auto
+       :tasks [:main.flex-grow.mx-auto.px-4.py-20.overflow-auto
                [tasks-index {:tasks (:tasks context)}]]
        [:div "Loading..."])
      [sidebar]]))

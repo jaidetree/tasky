@@ -1,172 +1,12 @@
 (ns dev.jaide.tasky.features.tasks
   (:require
    [dev.jaide.finity.core :as fsm]
-   [dev.jaide.tasky.dom :refer [timeout]]
-   [dev.jaide.tasky.state-machines :refer [ratom-fsm]]
    [dev.jaide.tasky.state.app-fsm :refer [app-fsm]]
+   [dev.jaide.tasky.state.task-fsm :refer [create-task-fsm blank-task]]
    [dev.jaide.tasky.state.tasks-fsm :refer [tasks-fsm]]
-   [dev.jaide.tasky.tasks :as tasks]
    [dev.jaide.tasky.views.delete-rocker :refer [delete-rocker]]
-   [dev.jaide.valhalla.core :as v]
-   [promesa.core :as p]
    [reagent.core :refer [class-names]]
    [reagent.core :refer [with-let]]))
-
-(def error-validator
-  (v/instance js/Error))
-
-(def blank-task
-  {:id ""
-   :title ""
-   :notes ""
-   :estimated_time 20
-   :estimated_time_map {:hours 0
-                        :minutes 20}
-   :due_date nil
-   :tracked_time 0
-   :parent_task_id ""
-   :created_at (new js/Date)
-   :updated_at (new js/Date)
-   :completed_at nil
-   :time_sessions []})
-
-(def task-fsm-spec
-  (fsm/define
-    {:id :task-row
-
-     :initial {:state :empty
-               :context {:task blank-task}}
-
-     :states {:empty {:task (v/nilable tasks/task-validator)}
-              :ready {:task tasks/task-validator
-                      :error (v/nilable error-validator)}
-              :saving {:task tasks/task-validator}
-              :deleting {:task tasks/task-validator}
-              :deleted {}}
-
-     :actions {:init {:task tasks/task-validator}
-               :update {:data (v/hash-map
-                               (v/vector (v/keyword))
-                               (v/union
-                                (v/string)
-                                (v/number)
-                                (v/boolean)))}
-               :save {}
-               :updated {:task tasks/task-validator}
-               :created {:task tasks/task-validator}
-               :error {:error error-validator}
-               :reset {}
-               :delete {}
-               :deleted {}}
-
-     :effects {:debounce [{:delay (v/number)
-                           :timestamp (v/number)
-                           :action (v/keyword)}
-                          (fn [{:keys [dispatch effect]}]
-                            (let [ms (get effect :delay)
-                                  action (get effect :action)]
-                              (timeout
-                               ms
-                               #(dispatch {:type action}))))]
-
-               :update [{:timestamp (v/number)}
-                        (fn [{{{:keys [task]} :context} :state :keys [dispatch _effect]}]
-                          (let [abort-controller (js/AbortController.)]
-                            (-> (tasks/update-task task (.-signal abort-controller))
-                                (p/then #(dispatch {:type :updated :task %}))
-                                (p/catch #(dispatch {:type :error :error %})))
-                            (fn []
-                              (.abort abort-controller))))]
-
-               :create [{:timestamp (v/number)}
-                        (fn [{{{:keys [task]} :context} :state :keys [dispatch _effect]}]
-                          (let [abort-controller (js/AbortController.)]
-                            (-> (tasks/create-task task (.-signal abort-controller))
-                                (p/then #(dispatch {:type :created :task %}))
-                                (p/catch #(dispatch {:type :error :error %})))
-                            (fn []
-                              (.abort abort-controller))))]
-
-               :delete [{:task tasks/task-validator}
-                        (fn [{:keys [dispatch effect]}]
-                          (let [task (:task effect)]
-                            (-> (tasks/delete-task (:id task))
-                                (p/catch #(dispatch {:type :error :error %})))
-                            (timeout
-                             1000
-                             #(dispatch {:type :deleted}))))]}
-
-     :transitions
-     [{:from [:empty]
-       :actions [:init]
-       :to [:ready]
-       :do (fn [state action]
-             {:state :ready
-              :context {:task (:task action)}})}
-
-      {:from [:ready :empty]
-       :actions [:update]
-       :to [:ready]
-       :do (fn [{:keys [context]} {:keys [data]}]
-             (let [task (:task context)]
-               {:state :ready
-                :context {:error (:error context)
-                          :task (->> data
-                                     (reduce
-                                      (fn [task [path value]]
-                                        (assoc-in task path value))
-                                      task))}
-                :effect {:id :debounce
-                         :timestamp (js/Date.now)
-                         :delay 500
-                         :action :save}}))}
-
-      {:from [:ready]
-       :actions [:save]
-       :to [:saving]
-       :do (fn [state _action]
-             (let [task (get-in state [:context :task])]
-               {:state :saving
-                :context {:task task}
-                :effect {:id (if (= (:id task) "")
-                               :create
-                               :update)
-                         :timestamp (js/Date.now)}}))}
-
-      {:from [:saving]
-       :actions [:reset :created]
-       :to [:empty]
-       :do (fn [_state _actions]
-             {:state :empty
-              :context {:task blank-task}})}
-
-      {:from [:saving]
-       :actions [:updated]
-       :to [:ready]
-       :do (fn [_state action]
-             {:state :ready
-              :context {:task (:task action)
-                        :error nil}})}
-
-      {:from [:saving :deleting]
-       :actions [:error]
-       :to [:ready]
-       :do (fn [state action]
-             {:state :ready
-              :context {:task (get-in state [:context :task])
-                        :error (get :error action)}})}
-
-      {:from [:ready]
-       :actions [:delete]
-       :to [:deleting]
-       :do (fn [state _action]
-             {:state :deleting
-              :context {:task (get-in state [:context :task])}
-              :effect {:id :delete :task (get-in state [:context :task])}})}
-
-      {:from [:deleting]
-       :actions [:deleted]
-       :to :deleted}]}))
 
 (defn th
   [& children]
@@ -183,7 +23,6 @@
 
 (defn update-task
   [task-fsm event]
-  (println event)
   (let [name (-> event (.-target) (.-name) (keyword))
         value (-> event (.-target) (.-value))
         data (case name
@@ -203,7 +42,6 @@
 
                :complete {[:completed_at] (new js/Date)}
                {[name] value})]
-    (cljs.pprint/pprint data)
     (fsm/dispatch task-fsm {:type :update :data data})))
 
 (defn title
@@ -262,76 +100,82 @@
   (atom nil))
 
 (defn task-row
-  [{:keys [task tasks level]
+  [{:keys [task-fsm tasks level]
     :or {level 0}}]
-  (with-let [task-fsm (ratom-fsm task-fsm-spec
-                                 {:initial {:state :empty}})
-             _ (reset! debug-atom task-fsm)
-             _ (fsm/subscribe task-fsm
-                              (fn [{:keys [prev next action]}]
-                                (when (= (:type action) :created)
-                                  (println "refreshing tasks")
-                                  (fsm/dispatch tasks-fsm {:type :refresh}))))
+  (with-let [task-fsm (if (some? task-fsm)
+                        task-fsm
+                        (create-task-fsm
+                         blank-task))
+             unsubscribe (fsm/subscribe
+                          task-fsm
+                          (fn [{:keys [prev next action]}]
+                            (cljs.pprint/pprint {:action action
+                                                 :next next})
+                            (when (= (:type action) :created)
+                              (fsm/dispatch tasks-fsm {:type :refresh}))))]
 
-             _ (fsm/dispatch task-fsm {:type :init :task task})]
-    (let [subtasks (->> tasks
-                        (filter #(= (:parent_task_id %)
-                                    (:id task))))
-          task (get task-fsm :task)
+    (let [task (get task-fsm :task)
+          subtasks (->> (get tasks-fsm :tasks)
+                        (filter #(and (= (get-in % [:task :parent_task_id])
+                                         (:id task))
+                                      (not= (:state @%) :deleted))))
           form-id (str "task-form-" (:id task))]
       [:<>
-       (when (not= (:state @task-fsm) :deleted)
-         [:tr
-          {:class (class-names
-                   "transition transition-opacity duration-500 ease-in-out"
-                   (if (= (:state @task-fsm) :deleting)
-                     "bg-red-500/25 opacity-0"
-                     "opacity-100"))
-           :on-change #(update-task task-fsm %)}
+       [:tr
+        {:class (class-names
+                 "transition transition-opacity duration-500 ease-in-out"
+                 (if (= (:state @task-fsm) :deleting)
+                   "bg-red-500/25 opacity-0"
+                   "opacity-100"))
+         :on-change #(update-task task-fsm %)}
 
-          [td {:class "text-left"}
-           [:div
-            {:style {:paddingLeft (str level "rem")}}
-            [:form.flex.flex-row.flex-nowrap.gap-2
-             {:id form-id
-              :on-submit #(do (.preventDefault %)
-                              (fsm/dispatch task-fsm {:type :save}))
-              :on-input #(update-task task-fsm %)}
-             [checkbox
-              {:checked (some? (:completed_at task))}]
-             [title
-              {:value (:title task)}]]]]
-          [td {}
-           [due-date
-            {:form-id form-id
-             :value (if-let [date (:due_date task)]
-                      (.toISOString date)
-                      "")}]]
-          [td {}
-           [estimated-time
-            {:form-id form-id
-             :value (:estimated_time task)}]]
-          [td {:class "text-sm"}
-           (:tracked_time task)]
-          [td {}
-           [:div
-            {:class "flex flex-row items-end"}
-            (when-not (= (:id task) "")
-              [delete-rocker
-               {:id (str "task-" (:id task))
-                :on-delete #(fsm/dispatch task-fsm {:type :delete})}])]]])
+        [td {:class "text-left"}
+         [:div
+          {:style {:paddingLeft (str level "rem")}}
+          [:form.flex.flex-row.flex-nowrap.gap-2
+           {:id form-id
+            :on-submit #(do (.preventDefault %)
+                            (fsm/dispatch task-fsm {:type :save}))
+            :on-input #(update-task task-fsm %)}
+           [checkbox
+            {:checked (some? (:completed_at task))}]
+           [title
+            {:value (:title task)}]]]]
+        [td {}
+         [due-date
+          {:form-id form-id
+           :value (if-let [date (:due_date task)]
+                    (.toISOString date)
+                    "")}]]
+        [td {}
+         [estimated-time
+          {:form-id form-id
+           :value (:estimated_time task)}]]
+        [td {:class "text-sm"}
+         (:tracked_time task)]
+        [td {}
+         [:div
+          {:class "flex flex-row justify-end"}
+          (when-not (= (:id task) "")
+            [delete-rocker
+             {:id (str "task-" (:id task))
+              :on-delete #(fsm/dispatch task-fsm {:type :delete})}])]]]
 
-       (for [task subtasks]
-         [task-row
-          {:key (:id task)
-           :task task
-           :tasks tasks
-           :level (inc level)}])])))
+       (doall
+        (for [task-fsm subtasks]
+          [task-row
+           {:key (:id task)
+            :task-fsm task-fsm
+            :tasks tasks
+            :level (inc level)}]))])
+    (finally
+      (unsubscribe))))
 
 (defn tasks-table
-  [{:keys [tasks]}]
-  (let [root-tasks (->> tasks
-                        (filter #(nil? (:parent_task_id %))))]
+  [{:keys []}]
+  (let [root-fsms (->> (get-in tasks-fsm [:tasks])
+                       (filter #(and (nil? (get-in % [:task :parent_task_id]))
+                                     (not= (:state @%) :deleted))))]
     [:div.overflow-x-auto.shadow-md.rounded-lg
      [:table.min-w-full.table-auto
       [:thead
@@ -344,32 +188,22 @@
         [th ""]]]
 
       [:tbody
-       (for [task root-tasks]
-         [task-row {:key (:id task)
-                    :task task
-                    :tasks tasks}])]
+       (doall
+        (for [task-fsm root-fsms]
+          (let [task (get task-fsm :task)]
+            [task-row {:key (:id task)
+                       :task-fsm task-fsm
+                       :tasks-fsm tasks-fsm}])))]
       [:tfoot
        [task-row
-        {:task {:id ""
-                :title ""
-                :notes ""
-                :estimated_time 20
-                :estimated_time_map {:hours 0
-                                     :minutes 20}
-                :due_date nil
-                :tracked_time 0
-                :parent_task_id ""
-                :created_at (new js/Date)
-                :updated_at (new js/Date)
-                :completed_at nil
-                :time_sessions []}}]]]]))
+        {:task-fsm nil}]]]]))
 
 (defn new-task
   []
   (fsm/dispatch app-fsm {:type :new-task}))
 
 (defn tasks-index
-  [{:keys [tasks]}]
+  [{:keys []}]
   [:secton
    {:id "tasks-container"
     :class "space-y-4"}
@@ -386,7 +220,7 @@
        :on-click new-task}
       "New Task"]]]
    [tasks-table
-    {:tasks tasks}]])
+    {}]])
 
 (comment
   (let [fsm @debug-atom]
