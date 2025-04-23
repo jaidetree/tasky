@@ -193,7 +193,7 @@
 
 (defn hold-progress
   [{:keys [fsm]}]
-  (with-let [duration 2
+  (with-let [duration 1
              timer-fsm (doto (ratom-fsm countdown-fsm-spec
                                         {:initial {:state :inactive}})
                          (fsm/subscribe
@@ -201,15 +201,11 @@
                             (when (= (:state next) :complete)
                               (fsm/dispatch fsm {:type :delete}))))
                          (fsm/dispatch {:type :start :seconds duration}))]
-    (let [remaining (get timer-fsm :remaining)]
-      [:div.absolute
-       {:class "absolute left-0 right-0 bottom-0 top-0"}
-       [:div
-        {:class "absolute left-0 bottom-0 top-0 animate-static-progress bg-red-900"
-         :style {:animation-duration (str duration "s")}}]
-       [:div
-        {:class "absolute left-0 right-0 bottom-0 top-0 flex flex-col justify-center items-center text-white/50 font-semibold"}
-        remaining]])
+    [:div.absolute
+     {:class "absolute left-0 right-0 bottom-0 top-0"}
+     [:div
+      {:class "absolute left-0 bottom-0 top-0 animate-static-progress bg-red-900"
+       :style {:animation-duration (str duration "s")}}]]
     (finally
       (fsm/destroy timer-fsm))))
 

@@ -10,7 +10,7 @@ defmodule Tasky.Repo.Migrations.CreateTasks do
       add :due_date, :utc_datetime
       add :completed_at, :utc_datetime
       add :deleted_at, :utc_datetime
-      add :parent_task_id, references(:tasks, on_delete: :nothing, type: :binary_id)
+      add :parent_task_id, references(:tasks, on_delete: :delete_all, type: :binary_id)
 
       timestamps(type: :utc_datetime)
     end

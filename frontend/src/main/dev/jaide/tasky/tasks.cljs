@@ -62,13 +62,14 @@
     :parent_task_id (v/string)}))
 
 (defn create-task
-  [task]
-  (let [opts {:method :POST
+  [task & {:keys [signal]}]
+  (let [opts {:signal signal
+              :method :POST
               :headers {"Content-Type" "application/json"}
               :body (-> {:task task}
                         (clj->js)
                         (js/JSON.stringify))}]
-    (p/-> (js/fetch (str "/api/tasks")
+    (p/-> (js/fetch "/api/tasks"
                     (clj->js opts))
           (.json)
           (js->clj :keywordize-keys true))))
@@ -91,7 +92,5 @@
   (let [opts {:method :DELETE
               :headers {"Content-Type" "application/json"}
               :body "{}"}]
-    (p/-> (js/fetch (str "api/tasks/" task-id)
-                    (clj->js opts))
-          (.json)
-          (js->clj :keywordize-keys true))))
+    (js/fetch (str "api/tasks/" task-id)
+              (clj->js opts))))

@@ -57,6 +57,7 @@
        :actions [:refresh]
        :to [:tasks]
        :do (fn [{:keys [state context]} action]
+             (cljs.pprint/pprint action)
              {:state state
               :context context
               :effect {:id :fetch}})}]}))
@@ -64,3 +65,13 @@
 (def tasks-fsm (ratom-fsm tasks-fsm-spec))
 
 (fsm/dispatch tasks-fsm {:type :fetch})
+
+(fsm/subscribe
+ tasks-fsm
+ (fn [{:keys [action next]}]
+   (cljs.pprint/pprint {:action action
+                        :state next})))
+
+(comment
+  @tasks-fsm)
+

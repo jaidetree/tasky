@@ -8,8 +8,8 @@ defmodule Tasky.Repo.Migrations.CreateTimeSessions do
       add :end_time, :utc_datetime
       add :original_end_time, :utc_datetime
       add :notes, :text, null: false, default: ""
-      add :task_id, references(:tasks, on_delete: :nothing, type: :binary_id)
-      add :interrupted_by_task_id, references(:tasks, on_delete: :nothing, type: :binary_id)
+      add :task_id, references(:tasks, on_delete: :delete_all, type: :binary_id)
+      add :interrupted_by_task_id, references(:tasks, on_delete: :delete_all, type: :binary_id)
 
       timestamps(type: :utc_datetime)
     end
