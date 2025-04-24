@@ -62,7 +62,6 @@
        :actions [:refresh]
        :to [:tasks]
        :do (fn [{:keys [state context]} action]
-             (cljs.pprint/pprint action)
              {:state state
               :context context
               :effect {:id :fetch}})}]}))

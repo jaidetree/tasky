@@ -6,8 +6,8 @@
 - [x] Render root tasks in table
 - [x] Render subtasks in table
 - [x] Update tasks-fsm to create instances of task-fsms
-- [ ] Separate task-fsm from new-task-fsm
-- [ ] Update task-row to not make all tasks editable
+- [x] Separate task-fsm from new-task-fsm
+- [x] Update task-row to not make all tasks editable
 - [ ] Clicking on task name should open sidebar or drill into it
 - [ ] Add button to add nested new-task row
 

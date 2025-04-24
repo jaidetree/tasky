@@ -34,7 +34,7 @@ defmodule Tasky.Tracking.Task do
       :parent_task_id
     ])
     |> validate_required([:title, :estimated_time])
-    |> validate_number(:estimated_time, greater_than: 0)
+    |> validate_number(:estimated_time, greater_than: -1)
     |> foreign_key_constraint(:parent_task_id)
   end
 

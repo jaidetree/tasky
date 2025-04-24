@@ -1,12 +1,13 @@
 (ns dev.jaide.tasky.features.tasks
   (:require
+   [clojure.string :as s]
+   [reagent.core :refer [class-names with-let]]
    [dev.jaide.finity.core :as fsm]
+   [dev.jaide.tasky.state-machines :refer [ratom-fsm]]
    [dev.jaide.tasky.state.app-fsm :refer [app-fsm]]
-   [dev.jaide.tasky.state.task-fsm :refer [create-task-fsm blank-task]]
+   [dev.jaide.tasky.state.task-fsm :refer [blank-task new-task-fsm-spec]]
    [dev.jaide.tasky.state.tasks-fsm :refer [tasks-fsm]]
-   [dev.jaide.tasky.views.delete-rocker :refer [delete-rocker]]
-   [reagent.core :refer [class-names]]
-   [reagent.core :refer [with-let]]))
+   [dev.jaide.tasky.views.delete-rocker :refer [delete-rocker]]))
 
 (defn th
   [& children]
@@ -17,7 +18,7 @@
 (defn td
   [{:as attrs} & children]
   (into
-   [:td.py-2.px-4
+   [:td.py-2.px-4.text-sm
     (or attrs {})]
    children))
 
@@ -67,24 +68,60 @@
     :name "due_date"
     :value value}])
 
-(defn- min->string
+;; @TODO Just generate a list of options and find the matching one
+(def units
+  [["quarter" (* 3 30 24 60)]
+   ["month" (* 30 24 60)]
+   ["week" (* 7 24 60)]
+   ["day" (* 24 60)]
+   ["hr" 60]
+   ["min" 0]])
+
+(defn- min->str
   [minutes]
-  (let [hours (js/Math.floor (/ minutes 60))
-        minutes (- minutes (* hours 60))
-        s (if (pos? hours) (str hours " hrs") "")
-        s (if (pos? minutes) (str s ", " minutes " min") s)]
-    s))
+  (let [minutes (js/Number minutes)]
+    (loop [minutes minutes
+           units units
+           values []]
+      (let [[[label unit] & units] units]
+        (cond
+          (or (= minutes 0)
+              (nil? unit))
+          (s/join ", " values)
+
+          (= minutes unit)
+          (recur 0
+                 []
+                 (conj values (str (/ minutes unit) " " label)))
+
+          (> minutes unit)
+          (let [base (if (< unit 60)
+                       minutes
+                       (js/Math.floor (/ minutes unit)))
+                remaining (- minutes (* base unit))]
+            (recur remaining
+                   units
+                   (conj values (str base " " label (if (> 1 base) "s" "")))))
+
+          :else
+          (recur minutes
+                 units
+                 values))))))
+
+(comment
+  (min->str (* 8 24 60)))
 
 (defn estimated-time
   [{:keys [form-id value]}]
+  (println "estimated-time" (pr-str value))
   [:select
    {:form form-id
     :class "text-sm"
     :name "estimated_time"
-    :value value}
+    :value (if (zero? value) "" (js/String value))}
    [:option
     {:value ""}
-    "-- No Estimate --"]
+    "-- unknown --"]
    (for [min [10 15 20 30 45 60]]
      [:option
       {:key min
@@ -92,42 +129,105 @@
       (str min " min")])
    (for [min (range 60 (* 9 60) 60)]
      [:option
-      {:key [min]
+      {:key min
        :value min}
-      (min->string min)])])
+      (min->str min)])
+   (for [[label min] [["1 day" (* 24 60)]
+                      ["1 weeks" (* 7 24 60)]
+                      ["2 weeks" (* 2 7 24 60)]
+                      ["3 weeks" (* 3 7 24 60)]
+                      ["1 month" (* 30 24 60)]
+                      ["2 months" (* 2 30 24 60)]
+                      ["1 quarter" (* 2 30 24 60)]]]
+     [:option
+      {:key min
+       :value min}
+      label])])
 
-(def debug-atom
-  (atom nil))
+(defn create-new-task-fsm
+  []
+  (let [fsm (ratom-fsm new-task-fsm-spec
+                       {:id (str "new-task-fsm-" (js/Date.now))})]
+    [fsm
+     (fsm/subscribe fsm
+                    (fn [{:keys [action]}]
+                      (when (= (:type action) :created)
+                        (fsm/dispatch tasks-fsm :refresh))))]))
 
 (defn task-row
   [{:keys [task-fsm tasks level]
     :or {level 0}}]
-  (with-let [task-fsm (if (some? task-fsm)
-                        task-fsm
-                        (create-task-fsm
-                         blank-task))
-             unsubscribe (fsm/subscribe
-                          task-fsm
-                          (fn [{:keys [prev next action]}]
-                            (cljs.pprint/pprint {:action action
-                                                 :next next})
-                            (when (= (:type action) :created)
-                              (fsm/dispatch tasks-fsm {:type :refresh}))))]
+  (with-let [unsubscribe (fsm/subscribe task-fsm
+                                        (fn [{:keys [action]}]
+                                          (when (= (:type action) :deleted)
+                                            (fsm/dispatch tasks-fsm {:type :refresh}))))]
 
     (let [task (get task-fsm :task)
           subtasks (->> (get tasks-fsm :tasks)
                         (filter #(and (= (get-in % [:task :parent_task_id])
                                          (:id task))
-                                      (not= (:state @%) :deleted))))
-          form-id (str "task-form-" (:id task))]
+                                      (not= (:state @%) :deleted))))]
       [:<>
        [:tr
         {:class (class-names
                  "transition transition-opacity duration-500 ease-in-out"
                  (if (= (:state @task-fsm) :deleting)
                    "bg-red-500/25 opacity-0"
+                   "opacity-100"))}
+        [td {:class "text-left"}
+         [:div.flex.flex-row.flex-nowrap.gap-2
+          {:style {:paddingLeft (str level "rem")}}
+          [:form
+           {:id (str "task-form-" (:id task))
+            :on-submit #(do (.preventDefault %)
+                            (fsm/dispatch task-fsm {:type :save}))
+            :on-input #(update-task task-fsm %)}
+           [checkbox
+            {:checked (some? (:completed_at task))}]]
+          [:span
+           (:title task)]]]
+        [td {}
+         (if-let [date (:due_date task)]
+           (.toLocaleString date)
+           "-")]
+        [td {}
+         (min->str
+          (:estimated_time task))]
+        [td {}
+         (:tracked_time task)]
+        [td {}
+         [:div
+          {:class "flex flex-row justify-end"}
+          (when-not (= (:id task) "")
+            [delete-rocker
+             {:id (str "task-" (:id task))
+              :on-delete #(fsm/dispatch task-fsm {:type :delete})}])]]]
+       (doall
+        (for [task-fsm subtasks]
+          [task-row
+           {:key (:id task)
+            :task-fsm task-fsm
+            :tasks tasks
+            :level (inc level)}]))])
+    (finally
+      (unsubscribe))))
+
+(defn new-task-row
+  [{:keys [level]
+    :or {level 0}}]
+  (with-let [[form-fsm unsubscribe] (create-new-task-fsm)]
+    (let [task (get form-fsm :task)
+          form-id (str "new-task-form-" (:id task))
+          tasks (->> (get tasks-fsm :tasks)
+                     (map #(get % :task)))]
+      [:<>
+       [:tr
+        {:class (class-names
+                 "transition transition-opacity duration-500 ease-in-out"
+                 (if (= (:state @form-fsm) :deleting)
+                   "bg-red-500/25 opacity-0"
                    "opacity-100"))
-         :on-change #(update-task task-fsm %)}
+         :on-change #(update-task form-fsm %)}
 
         [td {:class "text-left"}
          [:div
@@ -135,8 +235,8 @@
           [:form.flex.flex-row.flex-nowrap.gap-2
            {:id form-id
             :on-submit #(do (.preventDefault %)
-                            (fsm/dispatch task-fsm {:type :save}))
-            :on-input #(update-task task-fsm %)}
+                            (fsm/dispatch form-fsm {:type :save}))
+            :on-input #(update-task form-fsm %)}
            [checkbox
             {:checked (some? (:completed_at task))}]
            [title
@@ -151,23 +251,21 @@
          [estimated-time
           {:form-id form-id
            :value (:estimated_time task)}]]
-        [td {:class "text-sm"}
-         (:tracked_time task)]
-        [td {}
-         [:div
-          {:class "flex flex-row justify-end"}
-          (when-not (= (:id task) "")
-            [delete-rocker
-             {:id (str "task-" (:id task))
-              :on-delete #(fsm/dispatch task-fsm {:type :delete})}])]]]
+        [td {:class "text-sm"
+             :col-span 2}
+         [:select.w-full
+          {:name "parent_task_id"
+           :value (:parent_task_id task)}
+          [:option
+           {:value ""}
+           "-- No Parent Task --"]
+          (doall
+           (for [task tasks]
+             [:option
+              {:key (:id task)
+               :value (:id task)}
+              (:title task)]))]]]])
 
-       (doall
-        (for [task-fsm subtasks]
-          [task-row
-           {:key (:id task)
-            :task-fsm task-fsm
-            :tasks tasks
-            :level (inc level)}]))])
     (finally
       (unsubscribe))))
 
@@ -195,8 +293,8 @@
                        :task-fsm task-fsm
                        :tasks-fsm tasks-fsm}])))]
       [:tfoot
-       [task-row
-        {:task-fsm nil}]]]]))
+       [new-task-row
+        {}]]]]))
 
 (defn new-task
   []

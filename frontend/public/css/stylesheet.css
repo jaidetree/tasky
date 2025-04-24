@@ -239,6 +239,12 @@
   .h-40 {
     height: calc(var(--spacing) * 40);
   }
+  .min-h-\[20rem\] {
+    min-height: 20rem;
+  }
+  .min-h-\[80rem\] {
+    min-height: 80rem;
+  }
   .min-h-screen {
     min-height: 100vh;
   }
@@ -256,6 +262,12 @@
   }
   .max-w-4xl {
     max-width: var(--container-4xl);
+  }
+  .max-w-full {
+    max-width: 100%;
+  }
+  .min-w-\[50rem\] {
+    min-width: 50rem;
   }
   .min-w-full {
     min-width: 100%;
@@ -316,6 +328,9 @@
   }
   .gap-2 {
     gap: calc(var(--spacing) * 2);
+  }
+  .gap-8 {
+    gap: calc(var(--spacing) * 8);
   }
   .space-y-4 {
     :where(& > :not(:last-child)) {

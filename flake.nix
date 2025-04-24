@@ -25,10 +25,11 @@
             lexical
 
             nodejs_23
+            babashka
             clj-kondo
             clojure
             clojure-lsp
-            temurin-jre-bin-17
+            temurin-jre-bin-21
 
             # Optional but recommended development tools
             notify
