@@ -159,11 +159,7 @@
 
      :effects {:create [{:timestamp (v/number)}
                         (fn [{{{:keys [task]} :context} :state :keys [dispatch _effect]}]
-                          (let [abort-controller (js/AbortController.)
-                                task (-> task
-                                         (update :estimated_time #(if (zero? %)
-                                                                    nil
-                                                                    %)))]
+                          (let [abort-controller (js/AbortController.)]
                             (-> (tasks/create-task task (.-signal abort-controller))
                                 (p/then #(dispatch {:type :created :task %}))
                                 (p/catch #(dispatch {:type :error :error %})))

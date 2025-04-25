@@ -27,5 +27,6 @@
 
 ## 4. Drill-down into Task
 
+- [ ] Update shadow-router to route all non-file, non-api routes to index.html
 - [ ] Fetch all children of a subtask
 - [ ] Consider a history vector to show breadcrumbs

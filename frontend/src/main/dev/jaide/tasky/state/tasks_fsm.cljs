@@ -22,6 +22,8 @@
      :actions {:fetch {}
                :fetched {:tasks tasks-validator}
                :refresh {}
+               :select {:task-id (v/string)}
+               :deselect {}
                :error {:error (v/instance js/Error.)}}
 
      :effects {:fetch
@@ -45,11 +47,12 @@
       {:from [:loading :tasks]
        :actions [:fetched]
        :to [:tasks]
-       :do (fn [state action]
+       :do (fn [{:keys [_state context]} action]
              {:state :tasks
-              :context {:tasks (->> (:tasks action)
-                                    (map create-task-fsm)
-                                    (vec))}})}
+              :context (merge context
+                              {:tasks (->> (:tasks action)
+                                           (map create-task-fsm)
+                                           (vec))})})}
 
       {:from [:loading]
        :actions [:error]
@@ -64,7 +67,23 @@
        :do (fn [{:keys [state context]} action]
              {:state state
               :context context
-              :effect {:id :fetch}})}]}))
+              :effect {:id :fetch}})}
+
+      {:from [:tasks]
+       :actions [:deselect]
+       :to [:tasks]
+       :do (fn [{:keys [state context effect]}]
+             {:state state
+              :context (-> context
+                           (assoc :id nil))})}
+
+      {:from [:tasks]
+       :actions [:select]
+       :to [:tasks]
+       :do (fn [{:keys [state context]} action]
+             {:state state
+              :context (-> context
+                           (assoc :id (:task-id action)))})}]}))
 
 (def tasks-fsm (ratom-fsm tasks-fsm-spec))
 

@@ -14,11 +14,11 @@ defmodule TaskyWeb.Router do
     plug :accepts, ["json"]
   end
 
-  scope "/", TaskyWeb do
-    pipe_through :browser
-
-    get "/", TasksController, :index
-  end
+  # scope "/", TaskyWeb do
+  #   pipe_through :browser
+  #
+  #   get "/", TasksController, :index
+  # end
 
   # Other scopes may use custom stacks.
   scope "/api", TaskyWeb do

@@ -92,5 +92,5 @@
   (let [opts {:method :DELETE
               :headers {"Content-Type" "application/json"}
               :body "{}"}]
-    (js/fetch (str "api/tasks/" task-id)
+    (js/fetch (str "/api/tasks/" task-id)
               (clj->js opts))))

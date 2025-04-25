@@ -7,9 +7,9 @@
    [dev.jaide.tasky.views.delete-rocker :refer [delete-rocker-fsm-spec]]))
 
 (def specs
-  [task-fsm-spec
+  [tasks-fsm-spec
+   task-fsm-spec
    new-task-fsm-spec
-   tasks-fsm-spec
    delete-rocker-fsm-spec])
 
 (defn diagrams

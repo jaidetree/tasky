@@ -68,91 +68,61 @@
     :name "due_date"
     :value value}])
 
-;; @TODO Just generate a list of options and find the matching one
-(def units
-  [["quarter" (* 3 30 24 60)]
-   ["month" (* 30 24 60)]
-   ["week" (* 7 24 60)]
-   ["day" (* 24 60)]
-   ["hr" 60]
-   ["min" 0]])
+(def estimates
+  [["1 quarter" (* 3 30 24 60)]
+   ["2 months" (* 2 30 24 60)]
+   ["1 month" (* 30 24 60)]
+   ["3 weeks" (* 3 7 24 60)]
+   ["2 weeks" (* 2 7 24 60)]
+   ["1 week" (* 7 24 60)]
+   ["3 days" (* 3 24 60)]
+   ["2 days" (* 2 24 60)]
+   ["1 day" (* 24 60)]
+   ["8 hr" (* 8 60)]
+   ["6 hr" (* 6 60)]
+   ["4 hr" (* 4 60)]
+   ["3 hr" (* 3 60)]
+   ["2 hr" (* 2 60)]
+   ["1 hr" 60]
+   ["45 min" 45]
+   ["30 min" 30]
+   ["20 min" 20]
+   ["15 min" 15]
+   ["10 min" 10]])
 
 (defn- min->str
   [minutes]
   (let [minutes (js/Number minutes)]
-    (loop [minutes minutes
-           units units
-           values []]
-      (let [[[label unit] & units] units]
+    (loop [estimates estimates]
+      (let [[[label estimate] & estimates] estimates]
         (cond
-          (or (= minutes 0)
-              (nil? unit))
-          (s/join ", " values)
+          (nil? estimate)
+          "unknown"
 
-          (= minutes unit)
-          (recur 0
-                 []
-                 (conj values (str (/ minutes unit) " " label)))
-
-          (> minutes unit)
-          (let [base (if (< unit 60)
-                       minutes
-                       (js/Math.floor (/ minutes unit)))
-                remaining (- minutes (* base unit))]
-            (recur remaining
-                   units
-                   (conj values (str base " " label (if (> 1 base) "s" "")))))
+          (= estimate minutes)
+          label
 
           :else
-          (recur minutes
-                 units
-                 values))))))
+          (recur estimates))))))
 
 (comment
-  (min->str (* 8 24 60)))
+  (min->str (* 7 24 60)))
 
 (defn estimated-time
   [{:keys [form-id value]}]
-  (println "estimated-time" (pr-str value))
   [:select
    {:form form-id
     :class "text-sm"
     :name "estimated_time"
-    :value (if (zero? value) "" (js/String value))}
+    :value (js/String value)}
    [:option
-    {:value ""}
+    {:value "0"}
     "-- unknown --"]
-   (for [min [10 15 20 30 45 60]]
-     [:option
-      {:key min
-       :value min}
-      (str min " min")])
-   (for [min (range 60 (* 9 60) 60)]
-     [:option
-      {:key min
-       :value min}
-      (min->str min)])
-   (for [[label min] [["1 day" (* 24 60)]
-                      ["1 weeks" (* 7 24 60)]
-                      ["2 weeks" (* 2 7 24 60)]
-                      ["3 weeks" (* 3 7 24 60)]
-                      ["1 month" (* 30 24 60)]
-                      ["2 months" (* 2 30 24 60)]
-                      ["1 quarter" (* 2 30 24 60)]]]
+   (for [[label min] estimates]
      [:option
       {:key min
        :value min}
       label])])
-
-(defn create-new-task-fsm
-  []
-  (let [fsm (ratom-fsm new-task-fsm-spec
-                       {:id (str "new-task-fsm-" (js/Date.now))})]
-    [fsm
-     (fsm/subscribe fsm
-                    (fn [{:keys [action]}]
-                      (when (= (:type action) :created)
-                        (fsm/dispatch tasks-fsm :refresh))))]))
 
 (defn task-row
   [{:keys [task-fsm tasks level]
@@ -184,7 +154,9 @@
             :on-input #(update-task task-fsm %)}
            [checkbox
             {:checked (some? (:completed_at task))}]]
-          [:span
+          [:button.flex-grow.block.text-left
+           {:type "button"
+            :on-click #(fsm/dispatch tasks-fsm {:type :select :task-id (:id task)})}
            (:title task)]]]
         [td {}
          (if-let [date (:due_date task)]
@@ -211,6 +183,28 @@
             :level (inc level)}]))])
     (finally
       (unsubscribe))))
+
+(defn create-new-task-fsm
+  []
+  (let [fsm (ratom-fsm new-task-fsm-spec
+                       {:id (str "new-task-fsm-" (js/Date.now))})
+        subscriptions [(fsm/subscribe fsm
+                                      (fn [{:keys [action]}]
+                                        (when (= (:type action) :created)
+                                          (fsm/dispatch tasks-fsm :refresh))))
+                       (fsm/subscribe tasks-fsm
+                                      (fn [{:keys [next action]}]
+                                        (when (or (= (:type action) :select)
+                                                  (= (:type action) :deselect))
+                                          (fsm/dispatch fsm {:type :update
+                                                             :data {[:parent_task_id]
+                                                                    (or (get-in next [:context :id])
+                                                                        "")}}))))]]
+
+    [fsm
+     (fn []
+       (for [unsubscribe subscriptions]
+         (unsubscribe)))]))
 
 (defn new-task-row
   [{:keys [level]
@@ -271,9 +265,14 @@
 
 (defn tasks-table
   [{:keys []}]
-  (let [root-fsms (->> (get-in tasks-fsm [:tasks])
-                       (filter #(and (nil? (get-in % [:task :parent_task_id]))
-                                     (not= (:state @%) :deleted))))]
+  (let [selected-task-id (get-in tasks-fsm [:id])
+        root-fsms (->> (get-in tasks-fsm [:tasks])
+                       (filter #(let [parent-id (get-in % [:task :parent_task_id])]
+                                  (if selected-task-id
+                                    (and (not= (:state @%) :deleted)
+                                         (= parent-id selected-task-id))
+                                    (and (nil? parent-id)
+                                         (not= (:state @%) :deleted))))))]
     [:div.overflow-x-auto.shadow-md.rounded-lg
      [:table.min-w-full.table-auto
       [:thead
