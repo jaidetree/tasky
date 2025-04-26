@@ -31,4 +31,8 @@
   .btn {
     @apply px-4 py-2 inline-block;
   }
+
+  .text-secondary {
+    @apply text-gray-700 dark:text-gray-500;
+  }
 }

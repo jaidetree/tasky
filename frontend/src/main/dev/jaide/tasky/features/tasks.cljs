@@ -127,62 +127,56 @@
 (defn task-row
   [{:keys [task-fsm tasks level]
     :or {level 0}}]
-  (with-let [unsubscribe (fsm/subscribe task-fsm
-                                        (fn [{:keys [action]}]
-                                          (when (= (:type action) :deleted)
-                                            (fsm/dispatch tasks-fsm {:type :refresh}))))]
-
-    (let [task (get task-fsm :task)
-          subtasks (->> (get tasks-fsm :tasks)
-                        (filter #(and (= (get-in % [:task :parent_task_id])
-                                         (:id task))
-                                      (not= (:state @%) :deleted))))]
-      [:<>
-       [:tr
-        {:class (class-names
-                 "transition transition-opacity duration-500 ease-in-out"
-                 (if (= (:state @task-fsm) :deleting)
-                   "bg-red-500/25 opacity-0"
-                   "opacity-100"))}
-        [td {:class "text-left"}
-         [:div.flex.flex-row.flex-nowrap.gap-2
-          {:style {:paddingLeft (str level "rem")}}
-          [:form
-           {:id (str "task-form-" (:id task))
-            :on-submit #(do (.preventDefault %)
-                            (fsm/dispatch task-fsm {:type :save}))
-            :on-input #(update-task task-fsm %)}
-           [checkbox
-            {:checked (some? (:completed_at task))}]]
-          [:button.flex-grow.block.text-left
-           {:type "button"
-            :on-click #(fsm/dispatch tasks-fsm {:type :select :task-id (:id task)})}
-           (:title task)]]]
-        [td {}
-         (if-let [date (:due_date task)]
-           (.toLocaleString date)
-           "-")]
-        [td {}
-         (min->str
-          (:estimated_time task))]
-        [td {}
-         (:tracked_time task)]
-        [td {}
-         [:div
-          {:class "flex flex-row justify-end"}
-          (when-not (= (:id task) "")
-            [delete-rocker
-             {:id (str "task-" (:id task))
-              :on-delete #(fsm/dispatch task-fsm {:type :delete})}])]]]
-       (doall
-        (for [task-fsm subtasks]
-          [task-row
-           {:key (:id task)
-            :task-fsm task-fsm
-            :tasks tasks
-            :level (inc level)}]))])
-    (finally
-      (unsubscribe))))
+  (let [task (get task-fsm :task)
+        subtasks (->> (get tasks-fsm :tasks)
+                      (map :fsm)
+                      (filter #(and (= (get-in % [:task :parent_task_id])
+                                       (:id task))
+                                    (not= (:state @%) :deleted))))]
+    [:<>
+     [:tr
+      {:class (class-names
+               "transition transition-opacity duration-500 ease-in-out"
+               (if (= (:state @task-fsm) :deleting)
+                 "bg-red-500/25 opacity-0"
+                 "opacity-100"))}
+      [td {:class "text-left"}
+       [:div.flex.flex-row.flex-nowrap.gap-2
+        {:style {:paddingLeft (str level "rem")}}
+        [:form
+         {:id (str "task-form-" (:id task))
+          :on-submit #(do (.preventDefault %)
+                          (fsm/dispatch task-fsm {:type :save}))
+          :on-input #(update-task task-fsm %)}
+         [checkbox
+          {:checked (some? (:completed_at task))}]]
+        [:button.flex-grow.block.text-left
+         {:type "button"
+          :on-click #(fsm/dispatch tasks-fsm {:type :navigate :task-id (:id task)})}
+         (:title task)]]]
+      [td {}
+       (if-let [date (:due_date task)]
+         (.toLocaleString date)
+         "-")]
+      [td {}
+       (min->str
+        (:estimated_time task))]
+      [td {}
+       (:tracked_time task)]
+      [td {}
+       [:div
+        {:class "flex flex-row justify-end"}
+        (when-not (= (:id task) "")
+          [delete-rocker
+           {:id (str "task-" (:id task))
+            :on-delete #(fsm/dispatch task-fsm {:type :delete})}])]]]
+     (doall
+      (for [task-fsm subtasks]
+        [task-row
+         {:key (:id task)
+          :task-fsm task-fsm
+          :tasks tasks
+          :level (inc level)}]))]))
 
 (defn create-new-task-fsm
   []
@@ -200,7 +194,6 @@
                                                              :data {[:parent_task_id]
                                                                     (or (get-in next [:context :id])
                                                                         "")}}))))]]
-
     [fsm
      (fn []
        (for [unsubscribe subscriptions]
@@ -213,7 +206,7 @@
     (let [task (get form-fsm :task)
           form-id (str "new-task-form-" (:id task))
           tasks (->> (get tasks-fsm :tasks)
-                     (map #(get % :task)))]
+                     (map #(get-in % [:fsm :task])))]
       [:<>
        [:tr
         {:class (class-names
@@ -263,17 +256,46 @@
     (finally
       (unsubscribe))))
 
+(defn breadcrumbs
+  [{:keys [history]}]
+  (let [history-set (set history)
+        tasks (->> (get tasks-fsm :tasks)
+                   (map #(get-in % [:fsm :task]))
+                   (filter #(contains? history-set (:id %))))
+        last-task (last tasks)]
+    [:div.mb-4
+     [:button
+      {:class "text-blue-500 cursor-pointer"
+       :on-click #(fsm/dispatch tasks-fsm {:type :back :target :root})}
+      "All Tasks"]
+     (for [task tasks]
+       [:<>
+        {:key (:id task)}
+        [:span
+         {:class "inline-block mx-2 text-secondary"}
+         "/"]
+        (if (= task last-task)
+          [:span
+           (:title task)]
+          [:button
+           {:type "button"
+            :class "text-blue-500 cursor-pointer"
+            :on-click #(fsm/dispatch tasks-fsm {:type :back :target (:id task)})}
+           (:title task)])])]))
+
 (defn tasks-table
   [{:keys []}]
-  (let [selected-task-id (get-in tasks-fsm [:id])
+  (let [selected-task-id (-> (get-in tasks-fsm [:history])
+                             (last))
         root-fsms (->> (get-in tasks-fsm [:tasks])
+                       (map :fsm)
                        (filter #(let [parent-id (get-in % [:task :parent_task_id])]
-                                  (if selected-task-id
-                                    (and (not= (:state @%) :deleted)
-                                         (= parent-id selected-task-id))
-                                    (and (nil? parent-id)
-                                         (not= (:state @%) :deleted))))))]
+                                  (and
+                                   (not= (:state @%) :deleted)
+                                   (= parent-id selected-task-id)))))]
     [:div.overflow-x-auto.shadow-md.rounded-lg
+     [breadcrumbs
+      {:history (get tasks-fsm :history)}]
      [:table.min-w-full.table-auto
       [:thead
        {:class "bg-gray100 dark:bg-slate-600"}
