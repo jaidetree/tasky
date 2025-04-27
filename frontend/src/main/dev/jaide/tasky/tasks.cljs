@@ -19,13 +19,15 @@
                     {:accept-dates true}))
     :created_at (v/string->date {:accept-dates true})
     :due_date (v/nilable
-               (v/string->date
-                {:accept-dates true}))
+               (v/union
+                (v/literal "")
+                (v/string->date
+                 {:accept-dates true})))
     :estimated_time (v/nilable (v/number))
     :estimated_time_map (v/record {:minutes (v/number)
                                    :hours (v/number)})
     :id (v/string)
-    :notes (v/string)
+    :notes (v/default (v/string) "")
     :parent_task_id (v/nilable (v/string))
     :title (v/string)
     :time_sessions (v/vector session-validator)
@@ -33,6 +35,21 @@
     :updated_at (v/union
                  (v/string->date)
                  (v/date))}))
+
+(def draft-validator
+  (v/record
+   {:title (v/string)
+    :estimated_time (v/nilable (v/number))
+    :estimated_time_map (v/record {:minutes (v/number)
+                                   :hours (v/number)})
+    :notes (v/nilable
+            (v/string))
+    :due_date (v/nilable
+               (v/union
+                (v/literal "")
+                (v/string->date
+                 {:accept-dates true})))
+    :parent_task_id (v/nilable (v/string))}))
 
 (def tasks-validator (v/vector task-validator))
 
@@ -47,19 +64,6 @@
   (p/-> (js/fetch (str "/api/tasks/" task-id))
         (.json)
         (js->clj :keywordize-keys true)))
-
-(def task-draft-validator
-  (v/record
-   {:id (v/string)
-    :title (v/string)
-    :notes (v/string)
-    :estimated_time_map (v/record
-                         {:hours (v/string->number
-                                  {:accept-numbers true})
-                          :minutes (v/string->number
-                                    {:accept-numbers true})})
-    :due_date (v/string)
-    :parent_task_id (v/string)}))
 
 (defn create-task
   [task & {:keys [signal]}]

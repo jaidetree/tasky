@@ -1,26 +1,22 @@
 (ns dev.jaide.tasky.features.tasks
   (:require
    [clojure.string :as s]
+   [clojure.pprint :refer [pprint]]
    [reagent.core :refer [class-names with-let]]
    [dev.jaide.finity.core :as fsm]
+   [dev.jaide.valhalla.core :as v]
+   [dev.jaide.valhalla.js :as vjs]
    [dev.jaide.tasky.state-machines :refer [ratom-fsm]]
    [dev.jaide.tasky.state.app-fsm :refer [app-fsm]]
    [dev.jaide.tasky.state.task-fsm :refer [blank-task new-task-fsm-spec]]
    [dev.jaide.tasky.state.tasks-fsm :refer [tasks-fsm]]
    [dev.jaide.tasky.views.delete-rocker :refer [delete-rocker]]))
 
-(defn th
-  [& children]
-  (into
-   [:th.py-3.px-4.text-left]
-   children))
-
-(defn td
-  [{:as attrs} & children]
-  (into
-   [:td.py-2.px-4.text-sm
-    (or attrs {})]
-   children))
+(defn estimate->map
+  [minutes]
+  (let [hours (js/Math.floor (/ minutes 60))
+        minutes (- minutes (* hours 60))]
+    [hours minutes]))
 
 (defn update-task
   [task-fsm event]
@@ -35,8 +31,7 @@
 
                :estimated_time
                (let [value (js/Number value)
-                     hours (js/Math.floor (/ value 60))
-                     minutes (- value (* hours 60))]
+                     [hours minutes] (estimate->map value)]
                  {[:estimated_time] value
                   [:estimated_time_map :hours] hours
                   [:estimated_time_map :minutes] minutes})
@@ -49,8 +44,9 @@
   [{:keys [value]}]
   [:input.flex-grow
    {:name "title"
-    :class "text-sm"
-    :value value}])
+    :class "text-sm w-full bg-slate-600/30 p-2 rounded"
+    :value value
+    :placeholder "New Task Title"}])
 
 (defn checkbox
   [{:keys [checked]}]
@@ -63,7 +59,7 @@
   [{:keys [form-id value]}]
   [:input
    {:form form-id
-    :class "text-xs"
+    :class "text-xs w-full border border-slate-700 p-2 rounded"
     :type "datetime-local"
     :name "due_date"
     :value value}])
@@ -112,7 +108,7 @@
   [{:keys [form-id value]}]
   [:select
    {:form form-id
-    :class "text-sm"
+    :class "text-sm border border-slate-700 b-2 rounded p-2"
     :name "estimated_time"
     :value (js/String value)}
    [:option
@@ -124,15 +120,143 @@
        :value min}
       label])])
 
+(defn parent-task
+  [{:keys [form-id value tasks]}]
+  [:select.w-full
+   {:name "parent_task_id"
+    :class "text-sm border border-slate-700 b-2 rounded p-2"
+    :value value
+    :form form-id}
+   [:option
+    {:value ""}
+    "-- No Parent Task --"]
+   (doall
+    (for [task tasks]
+      [:option
+       {:key (:id task)
+        :value (:id task)}
+       (:title task)]))])
+
+(defn create-new-task-fsm
+  []
+  (let [fsm (ratom-fsm new-task-fsm-spec
+                       {:id (str "new-task-fsm-" (js/Date.now))})
+        subscriptions [(fsm/subscribe fsm
+                                      (fn [{:keys [action]}]
+                                        (when (= (:type action) :created)
+                                          (fsm/dispatch tasks-fsm :refresh))))
+                       (fsm/subscribe tasks-fsm
+                                      (fn [{:keys [next action]}]
+                                        (when (or (= (:type action) :navigate)
+                                                  (= (:type action) :back))
+                                          (fsm/dispatch fsm {:type :update
+                                                             :data {[:parent_task_id]
+                                                                    (or (-> (get-in next [:context :history])
+                                                                            (last))
+                                                                        "")}}))))]]
+    [fsm
+     (fn []
+       (for [unsubscribe subscriptions]
+         (unsubscribe)))]))
+
+(defn value
+  [& validators]
+  (apply v/-> (vjs/prop "value") validators))
+
+(def form-data-validator
+  (v/-> (vjs/prop "currentTarget")
+        (vjs/prop "elements")
+        (vjs/record
+         {:title (value (v/string) (v/assert #(pos? (count %))))
+          :due_date (value (v/union
+                            (v/literal "")
+                            (v/string->date)))
+          :estimated_time (value (v/string->number))
+          :parent_task_id (value (v/string))})))
+
+(defn submit-form
+  [form-fsm event]
+  (.preventDefault event)
+  (let [form-data (v/parse form-data-validator event)
+        [hours minutes] (estimate->map (:estimated_time form-data))
+        form-data (merge form-data
+                         {:estimated_time_map {:hours hours
+                                               :minutes minutes}})]
+    (-> event .-currentTarget .-elements .-title .focus)
+    (fsm/dispatch form-fsm {:type :submit :form-data form-data})))
+
+(defn date->string
+  [date]
+  (if (instance? js/Date date)
+    (let [year (.getFullYear date)
+          month (-> date .getMonth .toString (.padStart 2 "0"))
+          day (-> date .getDate .toString (.padStart 2 "0"))
+          hour (-> date .getHours .toString (.padStart 2 "0"))
+          min (-> date .getMinutes .toString (.padStart 2 "0"))]
+      (str year "-" month "-" day "T" hour ":" min))
+    ""))
+
+(defn new-task-form
+  []
+  (with-let [[form-fsm unsubscribe] (create-new-task-fsm)]
+    (let [task (get form-fsm :task)
+          form-id (str "new-task-form-" (:id task))
+          tasks (->> (get tasks-fsm :tasks)
+                     (keep #(let [task-fsm (get-in % [:fsm])]
+                              (when (not= (:state @task-fsm) :deleted)
+                                (get task-fsm :task)))))]
+      [:form
+       {:id form-id
+        :on-submit #(submit-form form-fsm %)
+        :on-change #(update-task form-fsm %)
+        :on-input #(update-task form-fsm %)
+        :class "flex flex-row px-2 gap-4 bg-stone-950/50 py-2 items-center rounded-lg mx-4"}
+
+       [:div {:class "text-left flex-grow"}
+        [title
+         {:value (:title task)}]]
+
+       [:div {:class "min-w-32"}
+        [due-date
+         {:form-id form-id
+          :value (date->string (:due_date task))}]]
+       [:div {}
+        [estimated-time
+         {:form-id form-id
+          :value (:estimated_time task)}]]
+
+       [:div {:class "text-sm"}
+        [parent-task
+         {:form-id form-id
+          :tasks tasks
+          :value (:parent_task_id task)}]]])
+
+    (finally
+      (unsubscribe))))
+
+(defn th
+  [{:as attrs} & children]
+  (into
+   [:th.py-3.px-4.text-left.bg-gray-200
+    (merge attrs
+           {:class (class-names "bg-gray-200 bg-slate-600" (:class attrs))})]
+   children))
+
+(defn td
+  [{:as attrs} & children]
+  (into
+   [:td.py-2.px-4.text-sm
+    (or attrs {})]
+   children))
+
 (defn task-row
   [{:keys [task-fsm tasks level]
     :or {level 0}}]
   (let [task (get task-fsm :task)
         subtasks (->> (get tasks-fsm :tasks)
                       (map :fsm)
-                      (filter #(and (= (get-in % [:task :parent_task_id])
-                                       (:id task))
-                                    (not= (:state @%) :deleted))))]
+                      (filter #(= (get-in % [:task :parent_task_id])
+                                  (:id task))))]
     [:<>
      [:tr
       {:class (class-names
@@ -178,84 +302,6 @@
           :tasks tasks
           :level (inc level)}]))]))
 
-(defn create-new-task-fsm
-  []
-  (let [fsm (ratom-fsm new-task-fsm-spec
-                       {:id (str "new-task-fsm-" (js/Date.now))})
-        subscriptions [(fsm/subscribe fsm
-                                      (fn [{:keys [action]}]
-                                        (when (= (:type action) :created)
-                                          (fsm/dispatch tasks-fsm :refresh))))
-                       (fsm/subscribe tasks-fsm
-                                      (fn [{:keys [next action]}]
-                                        (when (or (= (:type action) :select)
-                                                  (= (:type action) :deselect))
-                                          (fsm/dispatch fsm {:type :update
-                                                             :data {[:parent_task_id]
-                                                                    (or (get-in next [:context :id])
-                                                                        "")}}))))]]
-    [fsm
-     (fn []
-       (for [unsubscribe subscriptions]
-         (unsubscribe)))]))
-
-(defn new-task-row
-  [{:keys [level]
-    :or {level 0}}]
-  (with-let [[form-fsm unsubscribe] (create-new-task-fsm)]
-    (let [task (get form-fsm :task)
-          form-id (str "new-task-form-" (:id task))
-          tasks (->> (get tasks-fsm :tasks)
-                     (map #(get-in % [:fsm :task])))]
-      [:<>
-       [:tr
-        {:class (class-names
-                 "transition transition-opacity duration-500 ease-in-out"
-                 (if (= (:state @form-fsm) :deleting)
-                   "bg-red-500/25 opacity-0"
-                   "opacity-100"))
-         :on-change #(update-task form-fsm %)}
-
-        [td {:class "text-left"}
-         [:div
-          {:style {:paddingLeft (str level "rem")}}
-          [:form.flex.flex-row.flex-nowrap.gap-2
-           {:id form-id
-            :on-submit #(do (.preventDefault %)
-                            (fsm/dispatch form-fsm {:type :save}))
-            :on-input #(update-task form-fsm %)}
-           [checkbox
-            {:checked (some? (:completed_at task))}]
-           [title
-            {:value (:title task)}]]]]
-        [td {}
-         [due-date
-          {:form-id form-id
-           :value (if-let [date (:due_date task)]
-                    (.toISOString date)
-                    "")}]]
-        [td {}
-         [estimated-time
-          {:form-id form-id
-           :value (:estimated_time task)}]]
-        [td {:class "text-sm"
-             :col-span 2}
-         [:select.w-full
-          {:name "parent_task_id"
-           :value (:parent_task_id task)}
-          [:option
-           {:value ""}
-           "-- No Parent Task --"]
-          (doall
-           (for [task tasks]
-             [:option
-              {:key (:id task)
-               :value (:id task)}
-              (:title task)]))]]]])
-
-    (finally
-      (unsubscribe))))
-
 (defn breadcrumbs
   [{:keys [history]}]
   (let [history-set (set history)
@@ -290,21 +336,29 @@
         root-fsms (->> (get-in tasks-fsm [:tasks])
                        (map :fsm)
                        (filter #(let [parent-id (get-in % [:task :parent_task_id])]
-                                  (and
-                                   (not= (:state @%) :deleted)
-                                   (= parent-id selected-task-id)))))]
-    [:div.overflow-x-auto.shadow-md.rounded-lg
+                                  (= parent-id selected-task-id))))]
+    [:div.overflow-x-auto.px
      [breadcrumbs
       {:history (get tasks-fsm :history)}]
      [:table.min-w-full.table-auto
       [:thead
-       {:class "bg-gray100 dark:bg-slate-600"}
+       {:class ""}
        [:tr
-        [th "Name"]
-        [th "Due"]
-        [th "Estimate"]
-        [th "Elapsed"]
-        [th ""]]]
+        [th
+         {:class "rounded-l-lg"}
+         "Name"]
+        [th
+         {}
+         "Due"]
+        [th
+         {}
+         "Estimate"]
+        [th
+         {}
+         "Elapsed"]
+        [th
+         {:class "rounded-r-lg"}
+         ""]]]
 
       [:tbody
        (doall
@@ -312,10 +366,9 @@
           (let [task (get task-fsm :task)]
             [task-row {:key (:id task)
                        :task-fsm task-fsm
-                       :tasks-fsm tasks-fsm}])))]
-      [:tfoot
-       [new-task-row
-        {}]]]]))
+                       :tasks-fsm tasks-fsm}])))]]
+     [new-task-form
+      {}]]))
 
 (defn new-task
   []

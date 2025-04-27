@@ -16,8 +16,7 @@
      :unsubscribe (fsm/subscribe
                    fsm
                    (fn [{:keys [next action]}]
-                     (when (and (= (:type action) :delete)
-                                (= (:state next) :deleted))
+                     (when (= (:type action) (:state next) :deleted)
                        (fsm/dispatch tasks-fsm {:type :remove :task-id (:id task)}))))
      :fsm fsm}))
 
@@ -90,6 +89,21 @@
              {:state state
               :context context
               :effect {:id :fetch}})}
+
+      {:from [:tasks]
+       :actions [:remove]
+       :to [:tasks]
+       :do (fn remove-task [{:keys [state context]} {:keys [task-id]}]
+             (let [tasks (:tasks context)
+                   {:keys [fsm unsubscribe]} (->> tasks
+                                                  (filter #(= (:id %) task-id))
+                                                  (first))]
+               (unsubscribe)
+               {:state state
+                :context {:tasks (->> (:tasks context)
+                                      (remove #(= (:id %) task-id))
+                                      (vec))
+                          :history (:history context)}}))}
 
       {:from [:tasks]
        :actions [:back]

@@ -30,10 +30,10 @@
                :context {}}
 
      :states  {:inactive {}
-               :drafting {:task task/task-draft-validator
+               :drafting {:task task/draft-validator
                           :dirty (v/boolean)
                           :error (v/nilable error-validator)}
-               :saving {:task task/task-draft-validator}}
+               :saving {:task task/draft-validator}}
 
      :actions {:create {:defaults (v/assert map?)}
                :update {:data (v/hash-map
@@ -44,7 +44,7 @@
                :saved {:task task/task-validator}
                :error {:error error-validator}}
 
-     :effects {:save [{:task task/task-draft-validator}
+     :effects {:save [{:task task/draft-validator}
                       (fn [{:keys [dispatch effect]}]
                         (let [task (:task effect)
                               {:keys [hours minutes]} (get task :estimated_time_map)

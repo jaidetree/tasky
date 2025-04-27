@@ -34,7 +34,7 @@
 
      :states {:ready {:task tasks/task-validator
                       :error (v/nilable error-validator)}
-              :saving {:task tasks/task-validator}
+              :submitting {:task tasks/task-validator}
               :deleting {:task tasks/task-validator}
               :deleted {}}
 
@@ -82,15 +82,19 @@
                                 (p/catch #(dispatch {:type :error :error %})))
                             (timeout
                              500
-                             #(dispatch {:type :deleted}))))]}
+                             #(dispatch {:type :deleted}))))]
+
+               :destroy [{}
+                         (fn [{:keys [fsm]}]
+                           (fsm/destroy fsm))]}
 
      :transitions
      [{:from [:ready]
        :actions [:update]
-       :to [:saving]
+       :to [:submitting]
        :do (fn [{:keys [context]} {:keys [data]}]
              (let [task (:task context)]
-               {:state :saving
+               {:state :submitting
                 :context {:error (:error context)
                           :task (->> data
                                      (reduce
@@ -99,7 +103,7 @@
                                       task))}
                 :effect {:id :update :timestamp (js/Date.now)}}))}
 
-      {:from [:saving]
+      {:from [:submitting]
        :actions [:updated]
        :to [:ready]
        :do (fn [_state action]
@@ -107,7 +111,7 @@
               :context {:task (:task action)
                         :error nil}})}
 
-      {:from [:saving :deleting]
+      {:from [:submitting :deleting]
        :actions [:error]
        :to [:ready]
        :do (fn [state action]
@@ -125,7 +129,10 @@
 
       {:from [:deleting]
        :actions [:deleted]
-       :to :deleted}]}))
+       :to [:deleted]
+       :do (fn [_state _action]
+             {:state :deleted
+              :effect :destroy})}]}))
 
 (defn create-task-fsm
   [task]
@@ -142,9 +149,9 @@
                :context {:task blank-task}}
 
      :states {:empty {:task (v/nilable tasks/task-validator)}
-              :drafting {:task tasks/task-validator
+              :drafting {:task tasks/draft-validator
                          :error (v/nilable error-validator)}
-              :saving {:task tasks/task-validator}}
+              :submitting {:task tasks/task-validator}}
 
      :actions {:update {:data (v/hash-map
                                (v/vector (v/keyword))
@@ -152,7 +159,7 @@
                                 (v/string)
                                 (v/number)
                                 (v/boolean)))}
-               :save {}
+               :submit {:form-data tasks/draft-validator}
                :created {:task tasks/task-validator}
                :error {:error error-validator}
                :reset {}}
@@ -181,16 +188,19 @@
                                       task))}}))}
 
       {:from [:drafting]
-       :actions [:save]
-       :to [:saving]
-       :do (fn [state _action]
+       :actions [:submit]
+       :to [:submitting]
+       :do (fn [state {:keys [form-data]}]
              (let [task (get-in state [:context :task])]
-               {:state :saving
-                :context {:task task}
+               {:state :submitting
+                :context {:task (merge
+                                 blank-task
+                                 task
+                                 form-data)}
                 :effect {:id :create
                          :timestamp (js/Date.now)}}))}
 
-      {:from [:saving]
+      {:from [:submitting]
        :actions [:error]
        :to [:drafting]
        :do (fn [{:keys [context]} {:keys [error]}]
@@ -198,7 +208,7 @@
               :context {:error error
                         :task (:task context)}})}
 
-      {:from [:saving]
+      {:from [:submitting]
        :actions [:reset :created]
        :to [:empty]
        :do (fn [_state action]
