@@ -2,15 +2,17 @@
   (:require
    [clojure.string :as s]
    [clojure.pprint :refer [pprint]]
-   [reagent.core :refer [class-names with-let]]
+   [reagent.core :refer [class-names with-let atom]]
    [dev.jaide.finity.core :as fsm]
    [dev.jaide.valhalla.core :as v]
    [dev.jaide.valhalla.js :as vjs]
+   [dev.jaide.tasky.router :as router]
    [dev.jaide.tasky.state-machines :refer [ratom-fsm]]
    [dev.jaide.tasky.state.app-fsm :refer [app-fsm]]
-   [dev.jaide.tasky.state.task-fsm :refer [blank-task new-task-fsm-spec]]
-   [dev.jaide.tasky.state.tasks-fsm :refer [tasks-fsm]]
-   [dev.jaide.tasky.views.delete-rocker :refer [delete-rocker]]))
+   [dev.jaide.tasky.state.task-fsm :refer [new-task-fsm-spec]]
+   [dev.jaide.tasky.state.tasks-fsm :refer [tasks-fsm all-tasks]]
+   [dev.jaide.tasky.views.delete-rocker :refer [delete-rocker]]
+   ["@heroicons/react/24/outline" :refer [ChevronRightIcon]]))
 
 (defn estimate->map
   [minutes]
@@ -252,67 +254,98 @@
 (defn task-row
   [{:keys [task-fsm tasks level]
     :or {level 0}}]
-  (let [task (get task-fsm :task)
-        subtasks (->> (get tasks-fsm :tasks)
-                      (map :fsm)
-                      (filter #(= (get-in % [:task :parent_task_id])
-                                  (:id task))))]
-    [:<>
-     [:tr
-      {:class (class-names
-               "transition transition-opacity duration-500 ease-in-out"
-               (if (= (:state @task-fsm) :deleting)
-                 "bg-red-500/25 opacity-0"
-                 "opacity-100"))}
-      [td {:class "text-left"}
-       [:div.flex.flex-row.flex-nowrap.gap-2
-        {:style {:paddingLeft (str level "rem")}}
-        [:form
-         {:id (str "task-form-" (:id task))
-          :on-submit #(do (.preventDefault %)
-                          (fsm/dispatch task-fsm {:type :save}))
-          :on-input #(update-task task-fsm %)}
-         [checkbox
-          {:checked (some? (:completed_at task))}]]
-        [:button.flex-grow.block.text-left
-         {:type "button"
-          :on-click #(fsm/dispatch tasks-fsm {:type :navigate :task-id (:id task)})}
-         (:title task)]]]
-      [td {}
-       (if-let [date (:due_date task)]
-         (.toLocaleString date)
-         "-")]
-      [td {}
-       (min->str
-        (:estimated_time task))]
-      [td {}
-       (:tracked_time task)]
-      [td {}
-       [:div
-        {:class "flex flex-row justify-end"}
-        (when-not (= (:id task) "")
-          [delete-rocker
-           {:id (str "task-" (:id task))
-            :on-delete #(fsm/dispatch task-fsm {:type :delete})}])]]]
-     (doall
-      (for [task-fsm subtasks]
-        [task-row
-         {:key (:id task)
-          :task-fsm task-fsm
-          :tasks tasks
-          :level (inc level)}]))]))
+  (with-let [toggle-atom (atom false)]
+    (let [task (get task-fsm :task)
+          subtasks (->> (get tasks-fsm :tasks)
+                        (map :fsm)
+                        (filter #(= (get-in % [:task :parent_task_id])
+                                    (:id task))))]
+      [:<>
+       [:tr.relative
+        {:class (class-names
+                 "transition transition-opacity duration-500 ease-in-out"
+                 (if (= (:state @task-fsm) :deleting)
+                   "bg-red-500/25 opacity-0"
+                   "opacity-100"))}
+        [td {:class "text-left"}
+         [:div
+          {:class "absolute -left-4 top-0 h-full flex flex-row items-center gap-2"}
+          (when (> (count subtasks) 0)
+            [:button
+             {:type "button"
+              :class ""
+              :on-click #(swap! toggle-atom not)}
+             [:> ChevronRightIcon
+              {:class "size-4"}]])]
+         [:div.flex.flex-row.flex-nowrap.gap-2
+          {:style {:paddingLeft (str level "rem")}}
+          [:form
+           {:id (str "task-form-" (:id task))
+            :on-submit #(do (.preventDefault %)
+                            (fsm/dispatch task-fsm {:type :save}))
+            :on-input #(update-task task-fsm %)}
+           [checkbox
+            {:checked (some? (:completed_at task))}]]
+          [:button.flex-grow.block.text-left
+           {:type "button"
+            :on-click #(router/navigate (str "/tasks/" (:id task)))}
+           (:title task)]]]
+        [td {}
+         (if-let [date (:due_date task)]
+           (.toLocaleString date)
+           "-")]
+        [td {}
+         (min->str
+          (:estimated_time task))]
+        [td {}
+         (:tracked_time task)]
+        [td {}
+         [:div
+          {:class "flex flex-row justify-end"}
+          (when-not (= (:id task) "")
+            [delete-rocker
+             {:id (str "task-" (:id task))
+              :on-delete #(fsm/dispatch task-fsm {:type :delete})}])]]]
+       (when @toggle-atom
+         (doall
+          (for [task-fsm subtasks]
+            [task-row
+             {:key (:id task)
+              :task-fsm task-fsm
+              :tasks tasks
+              :level (inc level)}])))])))
+
+(defn collect-parents
+  [task-id all-tasks]
+  (vec
+   (loop [selected []
+          task-id task-id
+          tasks all-tasks]
+     (let [[task & tasks] tasks]
+       (cond
+         (nil? task)
+         selected
+
+         (= (:id task) task-id)
+         (recur
+          (cons task selected)
+          (:parent_task_id task)
+          all-tasks)
+
+         :else
+         (recur
+          selected
+          task-id
+          tasks))))))
 
 (defn breadcrumbs
-  [{:keys [history]}]
-  (let [history-set (set history)
-        tasks (->> (get tasks-fsm :tasks)
-                   (map #(get-in % [:fsm :task]))
-                   (filter #(contains? history-set (:id %))))
+  [{:keys [task-id]}]
+  (let [tasks (collect-parents task-id (all-tasks))
         last-task (last tasks)]
     [:div.mb-4
      [:button
       {:class "text-blue-500 cursor-pointer"
-       :on-click #(fsm/dispatch tasks-fsm {:type :back :target :root})}
+       :on-click #(router/navigate "/")}
       "All Tasks"]
      (for [task tasks]
        [:<>
@@ -326,20 +359,19 @@
           [:button
            {:type "button"
             :class "text-blue-500 cursor-pointer"
-            :on-click #(fsm/dispatch tasks-fsm {:type :back :target (:id task)})}
+            :on-click #(router/navigate (str "/tasks/" (:id task)))}
            (:title task)])])]))
 
 (defn tasks-table
   [{:keys []}]
-  (let [selected-task-id (-> (get-in tasks-fsm [:history])
-                             (last))
+  (let [[selected-task-id] (get (router/route) :paths)
         root-fsms (->> (get-in tasks-fsm [:tasks])
                        (map :fsm)
                        (filter #(let [parent-id (get-in % [:task :parent_task_id])]
                                   (= parent-id selected-task-id))))]
-    [:div.overflow-x-auto.px
+    [:div.overflow-x-auto.px-8
      [breadcrumbs
-      {:history (get tasks-fsm :history)}]
+      {:task-id selected-task-id}]
      [:table.min-w-full.table-auto
       [:thead
        {:class ""}

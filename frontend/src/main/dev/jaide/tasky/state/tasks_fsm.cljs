@@ -1,5 +1,6 @@
 (ns dev.jaide.tasky.state.tasks-fsm
   (:require
+   [clojure.string :as s]
    [dev.jaide.finity.core :as fsm]
    [dev.jaide.tasky.state-machines :refer [ratom-fsm]]
    [dev.jaide.tasky.state.task-fsm :refer [create-task-fsm]]
@@ -20,6 +21,29 @@
                        (fsm/dispatch tasks-fsm {:type :remove :task-id (:id task)}))))
      :fsm fsm}))
 
+(defn collect-history
+  [task-id all-tasks]
+  (vec
+   (loop [tasks all-tasks
+          history []
+          task-id task-id]
+     (let [[task & tasks] tasks]
+       (cond
+         (nil? task)
+         history
+
+         (= (:id task) task-id)
+         (recur
+          all-tasks
+          (cons (:id task) history)
+          (:parent_task_id task))
+
+         :else
+         (recur
+          tasks
+          history
+          task-id))))))
+
 (def tasks-fsm-spec
   (fsm/define
     {:id :tasks
@@ -32,16 +56,11 @@
                               (v/record
                                {:id (v/string)
                                 :unsubscribe (v/assert fn?)
-                                :fsm (v/instance fsm/AtomFSM)}))
-                      :history (v/vector (v/string))}}
+                                :fsm (v/instance fsm/AtomFSM)}))}}
 
      :actions {:fetch {}
                :fetched {:tasks tasks-validator}
                :refresh {}
-               :navigate {:task-id (v/string)}
-               :back {:target (v/union
-                               (v/string)
-                               (v/keyword))}
                :remove {:task-id (v/string)}
                :error {:error (v/instance js/Error.)}}
 
@@ -103,29 +122,7 @@
                 :context {:tasks (->> (:tasks context)
                                       (remove #(= (:id %) task-id))
                                       (vec))
-                          :history (:history context)}}))}
-
-      {:from [:tasks]
-       :actions [:back]
-       :to [:tasks]
-       :do (fn tasks-back [{:keys [state context effect]} {:keys [target]}]
-             {:state state
-              :context (-> context
-                           (assoc :history (if (= target :root)
-                                             []
-                                             (-> (take-while
-                                                  #(not= % target)
-                                                  (:history context))
-                                                 (conj target)
-                                                 (vec)))))})}
-
-      {:from [:tasks]
-       :actions [:navigate]
-       :to [:tasks]
-       :do (fn tasks-navigate [{:keys [state context]} action]
-             {:state state
-              :context (-> context
-                           (update :history conj (:task-id action)))})}]}))
+                          :history (:history context)}}))}]}))
 
 (comment
   (->> [1 2 3 4]
@@ -134,11 +131,10 @@
 
 (def tasks-fsm (ratom-fsm tasks-fsm-spec))
 
-#_(fsm/subscribe
-   tasks-fsm
-   (fn [{:keys [action next]}]
-     (cljs.pprint/pprint {:action action
-                          :state next})))
+(defn all-tasks
+  []
+  (->> (get tasks-fsm :tasks)
+       (map #(get-in % [:fsm :task]))))
 
 (comment
   @tasks-fsm)
