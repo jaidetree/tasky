@@ -124,9 +124,9 @@
 
 (defn parent-task
   [{:keys [form-id value tasks]}]
-  [:select.w-full
+  [:select
    {:name "parent_task_id"
-    :class "text-sm border border-slate-700 b-2 rounded p-2"
+    :class "text-sm border border-slate-700 b-2 rounded p-2 w-[18.75rem]"
     :value value
     :form form-id}
    [:option
@@ -202,10 +202,17 @@
   []
   (with-let [[form-fsm unsubscribe] (create-new-task-fsm)]
     (let [task (get form-fsm :task)
+          selected-task-id (get-in (router/route) [:paths 0] "")
+          _ (println selected-task-id)
           form-id (str "new-task-form-" (:id task))
           tasks (->> (get tasks-fsm :tasks)
                      (keep #(let [task-fsm (get-in % [:fsm])]
-                              (when (not= (:state @task-fsm) :deleted)
+                              (when (and
+                                     (or (= (get-in task-fsm [:task :parent_task_id])
+                                            selected-task-id)
+                                         (= (get-in task-fsm [:task :id])
+                                            selected-task-id))
+                                     (not= (:state @task-fsm) :deleted))
                                 (get task-fsm :task)))))]
       [:form
        {:id form-id
@@ -218,20 +225,23 @@
         [title
          {:value (:title task)}]]
 
-       [:div {:class "min-w-32"}
-        [due-date
-         {:form-id form-id
-          :value (date->string (:due_date task))}]]
        [:div {}
         [estimated-time
          {:form-id form-id
           :value (:estimated_time task)}]]
 
+       [:div {:class "min-w-32"}
+        [due-date
+         {:form-id form-id
+          :value (date->string (:due_date task))}]]
+
        [:div {:class "text-sm"}
         [parent-task
          {:form-id form-id
           :tasks tasks
-          :value (:parent_task_id task)}]]])
+          :value (if (= (:state @form-fsm) :empty)
+                   selected-task-id
+                   (:parent_task_id task))}]]])
 
     (finally
       (unsubscribe))))
@@ -261,24 +271,24 @@
                         (filter #(= (get-in % [:task :parent_task_id])
                                     (:id task))))]
       [:<>
-       [:tr.relative
+       [:tr
         {:class (class-names
                  "transition transition-opacity duration-500 ease-in-out"
                  (if (= (:state @task-fsm) :deleting)
                    "bg-red-500/25 opacity-0"
                    "opacity-100"))}
         [td {:class "text-left"}
-         [:div
-          {:class "absolute -left-4 top-0 h-full flex flex-row items-center gap-2"}
-          (when (> (count subtasks) 0)
-            [:button
-             {:type "button"
-              :class ""
-              :on-click #(swap! toggle-atom not)}
-             [:> ChevronRightIcon
-              {:class "size-4"}]])]
-         [:div.flex.flex-row.flex-nowrap.gap-2
+         [:div.flex.flex-row.flex-nowrap.gap-2.relative
           {:style {:paddingLeft (str level "rem")}}
+          [:div
+           {:class "absolute -left-6 top-0 h-full flex flex-row items-center gap-2"}
+           (when (> (count subtasks) 0)
+             [:button
+              {:type "button"
+               :class ""
+               :on-click #(swap! toggle-atom not)}
+              [:> ChevronRightIcon
+               {:class "size-4"}]])]
           [:form
            {:id (str "task-form-" (:id task))
             :on-submit #(do (.preventDefault %)
@@ -291,12 +301,12 @@
             :on-click #(router/navigate (str "/tasks/" (:id task)))}
            (:title task)]]]
         [td {}
+         (min->str
+          (:estimated_time task))]
+        [td {}
          (if-let [date (:due_date task)]
            (.toLocaleString date)
            "-")]
-        [td {}
-         (min->str
-          (:estimated_time task))]
         [td {}
          (:tracked_time task)]
         [td {}
@@ -381,10 +391,10 @@
          "Name"]
         [th
          {}
-         "Due"]
+         "Estimate"]
         [th
          {}
-         "Estimate"]
+         "Due"]
         [th
          {}
          "Elapsed"]
