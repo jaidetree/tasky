@@ -13,6 +13,7 @@
         :devtools   {:after-load dev.jaide.tasky.core/-main}
         :js-options {:js-provider :external
                      :external-index-format :esm}
+        #_#_:dev         {:build-options {:ns-aliases {dev.jaide.pprint cljs.pprint}}}
         :compiler-options {:source-map true}
         :release    {:compiler-options {:optimizations :advanced
                                         :infer-externs :auto}}}
