@@ -301,16 +301,16 @@
            {:type "button"
             :on-click #(router/navigate (str "/tasks/" (:id task)))}
            (:title task)]]]
-        [td {}
+        [td {:class "w-50"}
          (min->str
           (:estimated_time task))]
-        [td {}
+        [td {:class "w-50"}
          (if-let [date (:due_date task)]
            (.toLocaleString date)
            "-")]
-        [td {}
+        [td {:class "w-50"}
          (:tracked_time task)]
-        [td {}
+        [td {:class "w-32"}
          [:div
           {:class "flex flex-row justify-end"}
           (when-not (= (:id task) "")
