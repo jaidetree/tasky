@@ -1,0 +1,58 @@
+layout {
+    cwd "/Users/j/projects/tasky"
+    tab name="root" hide_floating_panes=true {
+        pane size=1 borderless=true {
+            plugin location="zellij:tab-bar"
+        }
+        pane split_direction="vertical" {
+            pane command="nvim" name="nvim" size="66%"
+            pane size="34%" {
+                pane size="50%"
+                pane size="50%"
+            }
+        }
+        pane size=1 borderless=true {
+            plugin location="zellij:status-bar"
+        }
+    }
+    tab name="backend" cwd="backend" focus=true hide_floating_panes=true {
+        pane size=1 borderless=true {
+            plugin location="zellij:tab-bar"
+        }
+        pane split_direction="vertical" {
+            pane command="nvim" name="nvim" size="66%"
+            pane size="34%" {
+                pane size="50%"
+                pane focus=true size="50%"
+            }
+        }
+        pane size=1 borderless=true {
+            plugin location="zellij:status-bar"
+        }
+    }
+    tab name="frontend" cwd="frontend" hide_floating_panes=true {
+        pane size=1 borderless=true {
+            plugin location="zellij:tab-bar"
+        }
+        pane split_direction="vertical" {
+            pane command="nvim" size="66%"
+            pane size="34%" {
+                pane size="50%"
+                pane size="50%"
+            }
+        }
+        pane size=1 borderless=true {
+            plugin location="zellij:status-bar"
+        }
+    }
+    new_tab_template {
+        pane size=1 borderless=true {
+            plugin location="zellij:tab-bar"
+        }
+        pane
+        pane size=1 borderless=true {
+            plugin location="zellij:status-bar"
+        }
+    }
+}
+

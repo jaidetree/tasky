@@ -12,9 +12,15 @@
    new-task-fsm-spec
    delete-rocker-fsm-spec])
 
+(defn run-mermaid!
+  []
+  (when js/window.mermaid
+    (js/window.mermaid.run #js {:querySelector ".mermaid"})))
+
 (defn diagrams
   []
   [:div.flex.flex-col.justify-center.items-center.gap-8
+   {:ref run-mermaid!}
    (for [spec specs]
      [:pre
       {:key (:fsm/id @spec)
@@ -23,6 +29,3 @@
        "---\ntitle: " (:fsm/id @spec) "\n---\n"
        (fsm/spec->diagram spec))])])
 
-(defn ^:dev/after-load start
-  []
-  (js/setTimeout #(js/mermaid.run #js {:querySelector ".mermaid"}) 500))

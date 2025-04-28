@@ -143,19 +143,14 @@
   []
   (let [fsm (ratom-fsm new-task-fsm-spec
                        {:id (str "new-task-fsm-" (js/Date.now))})
+        parent-task-id (get-in (router/route) [:paths 0] "")
         subscriptions [(fsm/subscribe fsm
                                       (fn [{:keys [action]}]
                                         (when (= (:type action) :created)
                                           (fsm/dispatch tasks-fsm :refresh))))
-                       (fsm/subscribe tasks-fsm
-                                      (fn [{:keys [next action]}]
-                                        (when (or (= (:type action) :navigate)
-                                                  (= (:type action) :back))
-                                          (fsm/dispatch fsm {:type :update
-                                                             :data {[:parent_task_id]
-                                                                    (or (-> (get-in next [:context :history])
-                                                                            (last))
-                                                                        "")}}))))]]
+                       (router/sync-parent-id-from-route fsm)]]
+
+    (js/setTimeout #(fsm/dispatch fsm {:type :update :data {[:parent_task_id] parent-task-id}}) 0)
     [fsm
      (fn []
        (for [unsubscribe subscriptions]
@@ -203,7 +198,6 @@
   (with-let [[form-fsm unsubscribe] (create-new-task-fsm)]
     (let [task (get form-fsm :task)
           selected-task-id (get-in (router/route) [:paths 0] "")
-          _ (println selected-task-id)
           form-id (str "new-task-form-" (:id task))
           tasks (->> (get tasks-fsm :tasks)
                      (keep #(let [task-fsm (get-in % [:fsm])]
@@ -239,9 +233,7 @@
         [parent-task
          {:form-id form-id
           :tasks tasks
-          :value (if (= (:state @form-fsm) :empty)
-                   selected-task-id
-                   (:parent_task_id task))}]]])
+          :value (:parent_task_id task)}]]])
 
     (finally
       (unsubscribe))))
@@ -328,23 +320,23 @@
 (defn collect-parents
   [task-id all-tasks]
   (vec
-   (loop [selected []
+   (loop [parents []
           task-id task-id
           tasks all-tasks]
      (let [[task & tasks] tasks]
        (cond
          (nil? task)
-         selected
+         parents
 
          (= (:id task) task-id)
          (recur
-          (cons task selected)
+          (cons task parents)
           (:parent_task_id task)
           all-tasks)
 
          :else
          (recur
-          selected
+          parents
           task-id
           tasks))))))
 
@@ -374,7 +366,7 @@
 
 (defn tasks-table
   [{:keys []}]
-  (let [[selected-task-id] (get (router/route) :paths)
+  (let [selected-task-id (get-in (router/route) [:paths 0])
         root-fsms (->> (get-in tasks-fsm [:tasks])
                        (map :fsm)
                        (filter #(let [parent-id (get-in % [:task :parent_task_id])]

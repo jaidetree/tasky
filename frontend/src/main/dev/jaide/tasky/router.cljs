@@ -5,6 +5,7 @@
    [dev.jaide.finity.core :as fsm]
    [dev.jaide.tasky.dom :refer [on]]
    [dev.jaide.tasky.state-machines :refer [ratom-fsm]]
+   [dev.jaide.tasky.state.tasks-fsm :refer [tasks-fsm find-task-fsm]]
    [dev.jaide.valhalla.core :as v]))
 
 (defn url->route
@@ -30,7 +31,8 @@
               :active {:route (v/keyword)
                        :paths (v/vector (v/string))}}
 
-     :actions {:pop {:url (v/string)}
+     :actions {:init {:url (v/string)}
+               :pop {:url (v/string)}
                :push {:url (v/string)}}
 
      :effects {:sync-popstate [{}
@@ -42,10 +44,10 @@
 
      :transitions
      [{:from [:inactive]
-       :actions [:fsm/create]
+       :actions [:init]
        :to [:active]
-       :do (fn init [_state _action]
-             (let [[route paths] (url->route (location-str))]
+       :do (fn init [_state action]
+             (let [[route paths] (url->route (:url action))]
                {:state :active
                 :context {:route route
                           :paths paths}
@@ -71,6 +73,19 @@
 (defn route
   []
   (get @fsm :context))
+
+(defn sync-parent-id-from-route
+  [form-fsm]
+  (fsm/subscribe
+   fsm
+   (fn [{:keys [prev next _action]}]
+     (println next)
+     (let [task-id (get-in next [:context :paths 0] "")]
+       (when (not= (:context prev) (:context next))
+         (fsm/dispatch form-fsm {:type :update
+                                 :data {[:parent_task_id] task-id}}))))))
+
+(fsm/dispatch fsm {:type :init :url (location-str)})
 
 #_(fsm/subscribe
    fsm

@@ -21,29 +21,6 @@
                        (fsm/dispatch tasks-fsm {:type :remove :task-id (:id task)}))))
      :fsm fsm}))
 
-(defn collect-history
-  [task-id all-tasks]
-  (vec
-   (loop [tasks all-tasks
-          history []
-          task-id task-id]
-     (let [[task & tasks] tasks]
-       (cond
-         (nil? task)
-         history
-
-         (= (:id task) task-id)
-         (recur
-          all-tasks
-          (cons (:id task) history)
-          (:parent_task_id task))
-
-         :else
-         (recur
-          tasks
-          history
-          task-id))))))
-
 (def tasks-fsm-spec
   (fsm/define
     {:id :tasks
@@ -135,6 +112,13 @@
   []
   (->> (get tasks-fsm :tasks)
        (map #(get-in % [:fsm :task]))))
+
+(defn find-task-fsm
+  [task-id]
+  (->> (get tasks-fsm :tasks)
+       (filter #(= (get % :id) task-id))
+       (map :fsm)
+       (first)))
 
 (comment
   @tasks-fsm)
