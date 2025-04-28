@@ -438,7 +438,7 @@
    {:id "tasks-container"
     :class "space-y-4"}
    [:header
-    {:class "flex flex-row justify-between items-end"}
+    {:class "flex flex-row justify-between items-end px-8"}
     [:h1
      {:class "text-2xl font-bold"}
      "Tasks"]
@@ -456,3 +456,4 @@
   (let [fsm @debug-atom]
     (fsm/dispatch fsm {:type :update
                        :data {[:title] "Uxternal update"}})))
+
