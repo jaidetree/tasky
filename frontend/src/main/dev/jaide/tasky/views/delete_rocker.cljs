@@ -265,7 +265,6 @@
         unsubscribe (fsm/subscribe
                      fsm
                      (fn [{:keys [prev next]}]
-                       (cljs.pprint/pprint (:state next))
                        (when (and (= (:state next) :deleting)
                                   (not= (:state prev) (:state next)))
                          (on-delete))))]

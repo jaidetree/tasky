@@ -268,28 +268,21 @@
   [{:keys [task-fsm tasks level]
     :or {level 0}}]
   (with-let [complete (instance? js/Date (get-in task-fsm [:task :completed_at]))
-             toggle-atom (atom (not complete))
-             tr              (trans/create)]
+             toggle-atom (atom (not complete))]
     (let [{:keys [state context]} @task-fsm
           task (:task context)
-          phase @tr
           subtasks (->> (get tasks-fsm :tasks)
                         (map :fsm)
                         (filter #(= (get-in % [:task :parent_task_id])
                                     (:id task))))]
       [:<>
        [:tr
-        {:class (class-names
-                 "task-row"
-                 (when-not (= phase :idle)
-                   "transition-opacity duration-500 ease-in-out bg-red-500/50")
-                 (when (= phase :enter)
-                   "bg-red-500/50 opacity-100")
-                 (when (= phase :transition)
-                   "bg-red-500/50 opacity-0"))
-         :on-transitionend #(do
-                              (trans/end tr)
-                              (fsm/dispatch task-fsm :deleted))}
+        {:class (trans/class
+                 {:active (= state :deleting)
+                  :enter "transition-opacity duration-1000 bg-red-500/50 ease-in-out"
+                  :from "opacity-100"
+                  :to "opacity-0"})
+         :on-transitionend #(fsm/dispatch task-fsm :deleted)}
         [td {:class "text-left"}
          [:div.flex.flex-row.flex-nowrap.gap-2.relative
           {:style {:paddingLeft (str level "rem")}}
@@ -330,9 +323,7 @@
           (when-not (= (:id task) "")
             [delete-rocker
              {:id (str "task-" (:id task))
-              :on-delete #(do
-                            (fsm/dispatch task-fsm {:type :delete})
-                            (trans/start tr))}])]]]
+              :on-delete #(fsm/dispatch task-fsm {:type :delete})}])]]]
        (when @toggle-atom
          (doall
           (for [task-fsm subtasks]
@@ -454,9 +445,4 @@
       "New Task"]]]
    [tasks-table
     {}]])
-
-(comment
-  (let [fsm @debug-atom]
-    (fsm/dispatch fsm {:type :update
-                       :data {[:title] "Uxternal update"}})))
 

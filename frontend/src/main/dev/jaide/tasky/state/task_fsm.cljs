@@ -78,9 +78,9 @@
 
                :delete [{:task-id (v/string)}
                         (fn [{:keys [fsm dispatch effect]}]
-                          #_(-> (tasks/delete-task (:task-id effect))
-                                (p/then #(fsm/destroy fsm))
-                                (p/catch #(dispatch {:type :error :error %}))))]}
+                          (-> (tasks/delete-task (:task-id effect))
+                              (p/then #(fsm/destroy fsm))
+                              (p/catch #(dispatch {:type :error :error %}))))]}
 
      :transitions
      [{:from [:ready]
@@ -209,4 +209,6 @@
               :context {:task (-> blank-task
                                   (assoc :parent_task_id (get-in action [:task :parent_task_id])))}})}]}))
 
-
+(comment
+  nil
+  nil)

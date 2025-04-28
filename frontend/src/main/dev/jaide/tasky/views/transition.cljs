@@ -1,13 +1,13 @@
 (ns dev.jaide.tasky.views.transition
   (:require
+   [clojure.string :as s]
    [cljs.core :refer [IDeref]]
    [promesa.core :as p]
-   [reagent.core :refer [atom] :rename {atom ratom}]
-   [dev.jaide.valhalla.core :as v]
+   [reagent.core :as r]
    [dev.jaide.finity.core :as fsm]
-   [dev.jaide.tasky.dom :refer [abort-controller promise-with-resolvers]]))
-
-(def context-duration {:duration (v/number)})
+   [dev.jaide.valhalla.core :as v]
+   [dev.jaide.tasky.dom :refer [abort-controller on promise-with-resolvers]]
+   [dev.jaide.tasky.state-machines :refer [ratom-fsm]]))
 
 (defn request-animation-frame
   [signal]
@@ -50,7 +50,7 @@
 
   Returns a tuple vector with [state-atom, abort-fn, promise]"
   [{:keys [duration]}]
-  (let [state (ratom {:phase :idle :progress 0})
+  (let [state (r/atom {:phase :idle :progress 0})
         [signal abort] (abort-controller)]
     [state
      abort
@@ -74,29 +74,35 @@
     completes")
   (end
     [this]
-    "Complete the transition. Best invoked on a transitionend event")
+    "Signify the transition has completed, used to remove transition classes.
+    Should be called on transitionend events")
   (abort
     [this]
     "Cancel the transition"))
 
-(deftype AtomTransition [phase-ref abort-ref]
+(def default-state
+  {:enter false
+   :from false
+   :to false})
+
+(deftype AtomTransition [state-ref abort-ref]
   ITransition
   (abort [this]
     (when-let [abort @abort-ref]
       (abort this))
-    (reset! phase-ref :idle)
+    (reset! state-ref default-state)
     (reset! abort-ref nil))
 
   (start [this]
     (abort this)
     (let [[signal abort] (abort-controller)]
-      (reset! phase-ref :idle)
+      (reset! state-ref (assoc default-state :enter true))
       (reset! abort-ref abort)
       (-> (p/do
             (request-animation-frame signal)
-            (reset! phase-ref :enter)
+            (swap! state-ref assoc :from true)
             (request-animation-frame signal)
-            (reset! phase-ref :transition))
+            (swap! state-ref assoc :to true :from false))
           (p/catch
            (fn [_error]
              (abort this)
@@ -104,20 +110,105 @@
 
   (end [this]
     (let [[signal abort] (abort-controller)]
-      (reset! abort-ref abort)
       (-> (p/do
             (request-animation-frame signal)
-            (reset! phase-ref :complete))
+            (swap! state-ref assoc :enter false))
           (p/catch
            (fn [_error]
-             (reset! phase-ref :idle)
-             (reset! abort-ref nil)
+             (abort this)
              nil)))))
 
   IDeref
-  (-deref [this]
-    @phase-ref))
+  (-deref [_this]
+    @state-ref))
 
 (defn create
   []
-  (new AtomTransition (ratom :idle) (ratom nil)))
+  (new AtomTransition
+       (r/atom default-state)
+       (r/atom nil)))
+
+(def subscriber-validator (v/assert fn?))
+
+(defn broadcast-to-subs
+  [event subscribers]
+  (doseq [subscriber subscribers]
+    (subscriber event)))
+
+(def subscriptions-fsm-spec
+  (fsm/define
+    {:id :transition-subscriptions-fsm
+
+     :initial {:state :inactive
+               :context {}}
+
+     :states {:active {:subscribers (v/set subscriber-validator)}
+              :inactive {}}
+
+     :actions {:subscribe {:handler subscriber-validator}
+               :unsubscribe {:handler subscriber-validator}}
+
+     :effects {:broadcast [{}
+                           (fn [{:keys [fsm]}]
+                             (on js/document.body "transitionend"
+                                 #(broadcast-to-subs % (get fsm :subscribers))))]}
+
+     :transitions
+     [{:from [:inactive]
+       :actions [:subscribe]
+       :to [:active]
+       :do (fn [_state action]
+             {:state :active
+              :context {:subscribers #{(:handler action)}}
+              :effect :broadcast})}
+
+      {:from [:active]
+       :actions [:subscribe]
+       :to [:active]
+       :do (fn [state action]
+             (update-in state [:context :subscribers] conj (:handler action)))}
+
+      {:from [:active]
+       :actions [:unsubscribe]
+       :to [:active :inactive]
+       :do (fn [state action]
+             (let [subs (->> (get-in state [:context :subscribers])
+                             (remove #(= % (:handler action)))
+                             (set))]
+               (if (empty? subs)
+                 {:state :inactive
+                  :context {}}
+                 (assoc-in state [:context :subscribers] subs))))}]}))
+
+(def fsm (ratom-fsm subscriptions-fsm-spec))
+
+(defn end-transition
+  [event tr props]
+  (let [class-name (.. event -target -className)]
+    (when (and (:active props)
+               (s/includes? class-name (:enter props))
+               (s/includes? class-name (:to props)))
+      (end tr))))
+
+(defn track-class
+  [{:keys [active enter from to] :as props}]
+  (r/with-let [tr (create)
+               handler #(end-transition % tr props)
+               _ (fsm/dispatch fsm {:type :subscribe :handler handler})]
+    (let [state @tr]
+      (when (and active (= state default-state))
+        (start tr))
+      (r/class-names
+       (when (:enter state) enter)
+       (when (:from state) from)
+       (when (:to state) to)))
+    (finally
+      (abort tr)
+      (fsm/dispatch fsm {:type :unsubscribe :handler handler}))))
+
+(defn class
+  [{:keys [active enter from to]}]
+  @(r/track track-class {:active active
+                         :enter enter
+                         :from from
+                         :to to}))
