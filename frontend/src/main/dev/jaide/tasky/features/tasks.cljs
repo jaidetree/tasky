@@ -182,6 +182,12 @@
     (-> event .-currentTarget .-elements .-title .focus)
     (fsm/dispatch form-fsm {:type :submit :form-data form-data})))
 
+(defn submit-form-on-enter
+  [keyboard-event]
+  (when (= (.-key keyboard-event) "Enter")
+    (.preventDefault keyboard-event)
+    (.. keyboard-event -currentTarget requestSubmit)))
+
 (defn date->string
   [date]
   (if (instance? js/Date date)
@@ -213,6 +219,7 @@
         :on-submit #(submit-form form-fsm %)
         :on-change #(update-task form-fsm %)
         :on-input #(update-task form-fsm %)
+        :on-keyup submit-form-on-enter
         :class "flex flex-row px-2 gap-4 bg-stone-950/50 py-2 items-center rounded-lg mx-4"}
 
        [:div {:class "text-left flex-grow"}
@@ -280,7 +287,9 @@
                :class ""
                :on-click #(swap! toggle-atom not)}
               [:> ChevronRightIcon
-               {:class "size-4"}]])]
+               {:class (class-names "size-4 transition-transform duration-200 ease-in-out"
+                                    (when @toggle-atom
+                                      "rotate-90"))}]])]
           [:form
            {:id (str "task-form-" (:id task))
             :on-submit #(do (.preventDefault %)

@@ -79,7 +79,6 @@
   (fsm/subscribe
    fsm
    (fn [{:keys [prev next _action]}]
-     (println next)
      (let [task-id (get-in next [:context :paths 0] "")]
        (when (not= (:context prev) (:context next))
          (fsm/dispatch form-fsm {:type :update
