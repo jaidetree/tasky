@@ -1,18 +1,17 @@
 (ns dev.jaide.tasky.features.tasks
   (:require
-   [clojure.string :as s]
-   [clojure.pprint :refer [pprint]]
-   [reagent.core :refer [class-names with-let atom]]
+   ["@heroicons/react/24/outline" :refer [ChevronRightIcon]]
    [dev.jaide.finity.core :as fsm]
-   [dev.jaide.valhalla.core :as v]
-   [dev.jaide.valhalla.js :as vjs]
    [dev.jaide.tasky.router :as router]
    [dev.jaide.tasky.state-machines :refer [ratom-fsm]]
    [dev.jaide.tasky.state.app-fsm :refer [app-fsm]]
    [dev.jaide.tasky.state.task-fsm :refer [new-task-fsm-spec]]
-   [dev.jaide.tasky.state.tasks-fsm :refer [tasks-fsm all-tasks]]
+   [dev.jaide.tasky.state.tasks-fsm :refer [all-tasks tasks-fsm]]
    [dev.jaide.tasky.views.delete-rocker :refer [delete-rocker]]
-   ["@heroicons/react/24/outline" :refer [ChevronRightIcon]]))
+   [dev.jaide.tasky.views.transition :refer [create-transition-fsm]]
+   [dev.jaide.valhalla.core :as v]
+   [dev.jaide.valhalla.js :as vjs]
+   [reagent.core :refer [atom class-names with-let]]))
 
 (defn estimate->map
   [minutes]
@@ -24,6 +23,7 @@
   [task-fsm event]
   (let [name (-> event (.-target) (.-name) (keyword))
         value (-> event (.-target) (.-value))
+        {:keys [completed_at]} (get task-fsm :task)
         data (case name
                :estimated_time_minutes
                {[:estimated_time_map :minutes] (js/Number value)}
@@ -38,7 +38,9 @@
                   [:estimated_time_map :hours] hours
                   [:estimated_time_map :minutes] minutes})
 
-               :complete {[:completed_at] (new js/Date)}
+               :complete {[:completed_at] (if (instance? js/Date completed_at)
+                                            nil
+                                            (new js/Date))}
                {[name] value})]
     (fsm/dispatch task-fsm {:type :update :data data})))
 
@@ -148,6 +150,7 @@
                                       (fn [{:keys [action]}]
                                         (when (= (:type action) :created)
                                           (fsm/dispatch tasks-fsm :refresh))))
+
                        (router/sync-parent-id-from-route fsm)]]
 
     (js/setTimeout #(fsm/dispatch fsm {:type :update :data {[:parent_task_id] parent-task-id}}) 0)
@@ -186,6 +189,7 @@
   [keyboard-event]
   (when (= (.-key keyboard-event) "Enter")
     (.preventDefault keyboard-event)
+    (.stopImmediatePropagation keyboard-event)
     (.. keyboard-event -currentTarget requestSubmit)))
 
 (defn date->string
@@ -219,7 +223,7 @@
         :on-submit #(submit-form form-fsm %)
         :on-change #(update-task form-fsm %)
         :on-input #(update-task form-fsm %)
-        :on-keyup submit-form-on-enter
+        :on-keydown submit-form-on-enter
         :class "flex flex-row px-2 gap-4 bg-stone-950/50 py-2 items-center rounded-lg mx-4"}
 
        [:div {:class "text-left flex-grow"}
@@ -263,8 +267,13 @@
 (defn task-row
   [{:keys [task-fsm tasks level]
     :or {level 0}}]
-  (with-let [toggle-atom (atom false)]
-    (let [task (get task-fsm :task)
+  (with-let [complete (instance? js/Date (get-in task-fsm [:task :completed_at]))
+             toggle-atom (atom (not complete))
+             tr-fsm      (create-transition-fsm
+                          {:on-complete #(fsm/dispatch task-fsm :deleted)})]
+    (let [{:keys [state context]} @task-fsm
+          task (:task context)
+          phase (:state @tr-fsm)
           subtasks (->> (get tasks-fsm :tasks)
                         (map :fsm)
                         (filter #(= (get-in % [:task :parent_task_id])
@@ -272,10 +281,13 @@
       [:<>
        [:tr
         {:class (class-names
-                 "transition transition-opacity duration-500 ease-in-out"
-                 (if (= (:state @task-fsm) :deleting)
-                   "bg-red-500/25 opacity-0"
-                   "opacity-100"))}
+                 "task-row"
+                 (when (or (= phase :enter)
+                           (= phase :animate))
+                   "enter")
+                 (when (or (= phase :animate)
+                           (= phase :exit))
+                   "deleting"))}
         [td {:class "text-left"}
          [:div.flex.flex-row.flex-nowrap.gap-2.relative
           {:style {:paddingLeft (str level "rem")}}
@@ -316,7 +328,8 @@
           (when-not (= (:id task) "")
             [delete-rocker
              {:id (str "task-" (:id task))
-              :on-delete #(fsm/dispatch task-fsm {:type :delete})}])]]]
+              :on-delete #(do (fsm/dispatch task-fsm {:type :delete})
+                              (fsm/dispatch tr-fsm {:type :start :duration 500}))}])]]]
        (when @toggle-atom
          (doall
           (for [task-fsm subtasks]
@@ -324,7 +337,9 @@
              {:key (:id task)
               :task-fsm task-fsm
               :tasks tasks
-              :level (inc level)}])))])))
+              :level (inc level)}])))])
+    (finally
+      (fsm/destroy tr-fsm))))
 
 (defn collect-parents
   [task-id all-tasks]

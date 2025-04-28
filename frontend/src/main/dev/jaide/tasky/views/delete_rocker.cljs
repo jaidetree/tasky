@@ -191,22 +191,35 @@
   [state]
   (contains? #{:dragging :holding :deleting} state))
 
+(defn holding?
+  [state]
+  (contains? #{:holding :deleting} state))
+
 (defn hold-progress
   [{:keys [fsm]}]
   (with-let [duration 1
-             timer-fsm (doto (ratom-fsm countdown-fsm-spec
-                                        {:initial {:state :inactive}})
-                         (fsm/subscribe
+             timer-fsm (ratom-fsm countdown-fsm-spec
+                                  {:initial {:state :inactive}})
+             unsubscribe (fsm/subscribe
+                          fsm
                           (fn [{:keys [next]}]
-                            (when (= (:state next) :complete)
-                              (fsm/dispatch fsm {:type :delete}))))
-                         (fsm/dispatch {:type :start :seconds duration}))]
-    [:div.absolute
-     {:class "absolute left-0 right-0 bottom-0 top-0"}
-     [:div
-      {:class "absolute left-0 bottom-0 top-0 animate-static-progress bg-red-900"
-       :style {:animation-duration (str duration "s")}}]]
+                            (when (= (:state next) :holding)
+                              (fsm/dispatch timer-fsm {:type :start :seconds duration}))))]
+    (let [state (:state @fsm)]
+      [:div.absolute
+       {:class "absolute left-0 right-0 bottom-0 top-0"}
+       [:div
+        {:class (class-names
+                 "absolute left-0 bottom-0 top-0 w-0 transition-[width] bg-red-900"
+                 (when (holding? state)
+                   "w-full"))
+         :on-transitionend (when (holding? state)
+                             #(fsm/dispatch fsm {:type :delete}))
+         :style {:transition-duration (if (holding? state)
+                                        (str duration "s")
+                                        "200ms")}}]])
     (finally
+      (unsubscribe)
       (fsm/destroy timer-fsm))))
 
 (defn track
@@ -223,8 +236,7 @@
                                         "var(--color-zinc-700)"
                                         "var(--color-red-800)"))}}]
      (conj children
-           (when (= state :holding)
-             [hold-progress {:fsm fsm}])))))
+           [hold-progress {:fsm fsm}]))))
 
 (defn thumb
   [{:keys [fsm]}]
@@ -251,6 +263,7 @@
         unsubscribe (fsm/subscribe
                      fsm
                      (fn [{:keys [prev next]}]
+                       (cljs.pprint/pprint (:state next))
                        (when (and (= (:state next) :deleting)
                                   (not= (:state prev) (:state next)))
                          (on-delete))))]

@@ -42,6 +42,7 @@
                :update {:data (v/hash-map
                                (v/vector (v/keyword))
                                (v/union
+                                (v/nil-value)
                                 (v/string)
                                 (v/number)
                                 (v/boolean)
@@ -75,18 +76,11 @@
                             (fn []
                               (.abort abort-controller))))]
 
-               :delete [{:task tasks/task-validator}
-                        (fn [{:keys [dispatch effect]}]
-                          (let [task (:task effect)]
-                            (-> (tasks/delete-task (:id task))
-                                (p/catch #(dispatch {:type :error :error %})))
-                            (timeout
-                             500
-                             #(dispatch {:type :deleted}))))]
-
-               :destroy [{}
-                         (fn [{:keys [fsm]}]
-                           (fsm/destroy fsm))]}
+               :delete [{:task-id (v/string)}
+                        (fn [{:keys [fsm dispatch effect]}]
+                          (-> (tasks/delete-task (:task-id effect))
+                              (p/then #(fsm/destroy fsm))
+                              (p/catch #(dispatch {:type :error :error %}))))]}
 
      :transitions
      [{:from [:ready]
@@ -124,15 +118,14 @@
        :to [:deleting]
        :do (fn [state _action]
              {:state :deleting
-              :context {:task (get-in state [:context :task])}
-              :effect {:id :delete :task (get-in state [:context :task])}})}
+              :context {:task (get-in state [:context :task])}})}
 
       {:from [:deleting]
        :actions [:deleted]
        :to [:deleted]
-       :do (fn [_state _action]
+       :do (fn [state _action]
              {:state :deleted
-              :effect :destroy})}]}))
+              :effect {:id :delete :task-id (get-in state [:context :task :id])}})}]}))
 
 (defn create-task-fsm
   [task]
@@ -215,3 +208,5 @@
              {:state :empty
               :context {:task (-> blank-task
                                   (assoc :parent_task_id (get-in action [:task :parent_task_id])))}})}]}))
+
+

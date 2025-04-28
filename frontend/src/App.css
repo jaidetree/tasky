@@ -35,4 +35,12 @@
   .text-secondary {
     @apply text-gray-700 dark:text-gray-500;
   }
+
+  .task-row.enter {
+    @apply bg-red-500/25 transition-opacity transition-discrete duration-500 ease-in-out;
+  }
+
+  .task-row.deleting {
+    @apply opacity-0;
+  }
 }
