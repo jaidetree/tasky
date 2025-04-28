@@ -269,25 +269,23 @@
     :or {level 0}}]
   (with-let [complete (instance? js/Date (get-in task-fsm [:task :completed_at]))
              toggle-atom (atom (not complete))
-             tr-fsm      (create-transition-fsm
-                          {:on-complete #(fsm/dispatch task-fsm :deleted)})]
+             #_#_tr-fsm      (create-transition-fsm
+                              {:on-complete #(fsm/dispatch task-fsm :deleted)})]
     (let [{:keys [state context]} @task-fsm
           task (:task context)
-          phase (:state @tr-fsm)
+          #_#_phase (:state @tr-fsm)
           subtasks (->> (get tasks-fsm :tasks)
                         (map :fsm)
                         (filter #(= (get-in % [:task :parent_task_id])
                                     (:id task))))]
+      (js/console.log "re-render" (:title task))
       [:<>
        [:tr
         {:class (class-names
                  "task-row"
-                 (when (or (= phase :enter)
-                           (= phase :animate))
-                   "enter")
-                 (when (or (= phase :animate)
-                           (= phase :exit))
-                   "deleting"))}
+                 (when (= state :deleting)
+                   "deleting"))
+         :on-transitionend #(fsm/dispatch task-fsm :deleted)}
         [td {:class "text-left"}
          [:div.flex.flex-row.flex-nowrap.gap-2.relative
           {:style {:paddingLeft (str level "rem")}}
@@ -328,8 +326,10 @@
           (when-not (= (:id task) "")
             [delete-rocker
              {:id (str "task-" (:id task))
-              :on-delete #(do (fsm/dispatch task-fsm {:type :delete})
-                              (fsm/dispatch tr-fsm {:type :start :duration 500}))}])]]]
+              :on-delete #(do
+                            (fsm/dispatch task-fsm {:type :delete})
+
+                            #_(fsm/dispatch tr-fsm {:type :start :duration 500}))}])]]]
        (when @toggle-atom
          (doall
           (for [task-fsm subtasks]
@@ -339,7 +339,7 @@
               :tasks tasks
               :level (inc level)}])))])
     (finally
-      (fsm/destroy tr-fsm))))
+      #_(fsm/destroy tr-fsm))))
 
 (defn collect-parents
   [task-id all-tasks]
