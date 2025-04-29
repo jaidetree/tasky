@@ -65,9 +65,7 @@
                     nil)))]))
 
 (defprotocol ITransition
-  "Defines a set of functions for manipulating a transition implementation.
-  Unlike animation, a transition should be controlled externally for example
-  call `(end transition)` on transitionend events"
+  "Control the progression of a CSS transition"
   (start
     [this]
     "Start the transition returns a promise representing when the transition
@@ -130,7 +128,7 @@
 
 (def subscriber-validator (v/assert fn?))
 
-(defn broadcast-to-subs
+(defn- broadcast-to-subs
   [event subscribers]
   (doseq [subscriber subscribers]
     (subscriber event)))
@@ -180,9 +178,9 @@
                   :context {}}
                  (assoc-in state [:context :subscribers] subs))))}]}))
 
-(def fsm (ratom-fsm subscriptions-fsm-spec))
+(def ^:private fsm (ratom-fsm subscriptions-fsm-spec))
 
-(defn end-transition
+(defn- end-transition
   [event tr props]
   (let [class-name (.. event -target -className)]
     (when (and (:active props)
@@ -190,7 +188,7 @@
                (s/includes? class-name (:to props)))
       (end tr))))
 
-(defn track-class
+(defn- track-class
   [{:keys [active enter from to] :as props}]
   (r/with-let [tr (create)
                handler #(end-transition % tr props)
@@ -207,8 +205,24 @@
       (fsm/dispatch fsm {:type :unsubscribe :handler handler}))))
 
 (defn class
+  "Assign class names to a transition phase such as :enter :from and :to
+
+  It also handles ending the transition by using a global transitionend listener
+
+  Arguments:
+  - opts - A hash-map of options
+
+  Options:
+  - :active - Toggle the transition on or off
+  - :enter - String of class names to apply when transitioning
+  - :from - The class names when the transition starts
+  - :to - The class names to switch to. :from class is replaced with :to
+
+  Returns a string of class names
+  "
   [{:keys [active enter from to]}]
   @(r/track track-class {:active active
                          :enter enter
                          :from from
                          :to to}))
+
