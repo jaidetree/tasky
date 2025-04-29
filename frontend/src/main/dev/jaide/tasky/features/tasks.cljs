@@ -8,7 +8,7 @@
    [dev.jaide.tasky.state.task-fsm :refer [new-task-fsm-spec]]
    [dev.jaide.tasky.state.tasks-fsm :refer [all-tasks tasks-fsm]]
    [dev.jaide.tasky.views.delete-rocker :refer [delete-rocker]]
-   [dev.jaide.tasky.views.transition :refer [create-transition-fsm]]
+   [dev.jaide.tasky.views.transition :as trans]
    [dev.jaide.valhalla.core :as v]
    [dev.jaide.valhalla.js :as vjs]
    [reagent.core :refer [atom class-names with-let]]))
@@ -269,23 +269,27 @@
     :or {level 0}}]
   (with-let [complete (instance? js/Date (get-in task-fsm [:task :completed_at]))
              toggle-atom (atom (not complete))
-             #_#_tr-fsm      (create-transition-fsm
-                              {:on-complete #(fsm/dispatch task-fsm :deleted)})]
+             tr              (trans/create)]
     (let [{:keys [state context]} @task-fsm
           task (:task context)
-          #_#_phase (:state @tr-fsm)
+          phase @tr
           subtasks (->> (get tasks-fsm :tasks)
                         (map :fsm)
                         (filter #(= (get-in % [:task :parent_task_id])
                                     (:id task))))]
-      (js/console.log "re-render" (:title task))
       [:<>
        [:tr
         {:class (class-names
                  "task-row"
-                 (when (= state :deleting)
-                   "deleting"))
-         :on-transitionend #(fsm/dispatch task-fsm :deleted)}
+                 (when-not (= phase :idle)
+                   "transition-opacity duration-500 ease-in-out bg-red-500/50")
+                 (when (= phase :enter)
+                   "bg-red-500/50 opacity-100")
+                 (when (= phase :transition)
+                   "bg-red-500/50 opacity-0"))
+         :on-transitionend #(do
+                              (trans/end tr)
+                              (fsm/dispatch task-fsm :deleted))}
         [td {:class "text-left"}
          [:div.flex.flex-row.flex-nowrap.gap-2.relative
           {:style {:paddingLeft (str level "rem")}}
@@ -328,8 +332,7 @@
              {:id (str "task-" (:id task))
               :on-delete #(do
                             (fsm/dispatch task-fsm {:type :delete})
-
-                            #_(fsm/dispatch tr-fsm {:type :start :duration 500}))}])]]]
+                            (trans/start tr))}])]]]
        (when @toggle-atom
          (doall
           (for [task-fsm subtasks]

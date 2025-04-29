@@ -2,7 +2,7 @@
   (:require
    [promesa.core :as p]
    [dev.jaide.finity.core :as fsm]
-   [dev.jaide.tasky.dom :refer [timeout]]
+   [dev.jaide.tasky.dom :refer [timeout abort-controller]]
    [dev.jaide.tasky.state-machines :refer [ratom-fsm]]
    [dev.jaide.tasky.tasks :as tasks]
    [dev.jaide.valhalla.core :as v]))
@@ -78,9 +78,9 @@
 
                :delete [{:task-id (v/string)}
                         (fn [{:keys [fsm dispatch effect]}]
-                          (-> (tasks/delete-task (:task-id effect))
-                              (p/then #(fsm/destroy fsm))
-                              (p/catch #(dispatch {:type :error :error %}))))]}
+                          #_(-> (tasks/delete-task (:task-id effect))
+                                (p/then #(fsm/destroy fsm))
+                                (p/catch #(dispatch {:type :error :error %}))))]}
 
      :transitions
      [{:from [:ready]
@@ -159,12 +159,12 @@
 
      :effects {:create [{:timestamp (v/number)}
                         (fn [{{{:keys [task]} :context} :state :keys [dispatch _effect]}]
-                          (let [abort-controller (js/AbortController.)]
-                            (-> (tasks/create-task task (.-signal abort-controller))
+                          (let [[signal abort] (abort-controller)]
+                            (-> (tasks/create-task task signal)
                                 (p/then #(dispatch {:type :created :task %}))
                                 (p/catch #(dispatch {:type :error :error %})))
                             (fn []
-                              (.abort abort-controller))))]}
+                              (abort))))]}
 
      :transitions
      [{:from [:drafting :empty]

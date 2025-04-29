@@ -214,7 +214,9 @@
                  (when (holding? state)
                    "w-full"))
          :on-transitionend (when (holding? state)
-                             #(fsm/dispatch fsm {:type :delete}))
+                             #(do
+                                (.stopPropagation %)
+                                (fsm/dispatch fsm {:type :delete})))
          :style {:transition-duration (if (holding? state)
                                         (str duration "s")
                                         "200ms")}}]])

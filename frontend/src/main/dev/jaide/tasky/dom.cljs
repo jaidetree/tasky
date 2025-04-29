@@ -14,4 +14,16 @@
       []
       (js/clearTimeout timer))))
 
+(defn abort-controller
+  []
+  (let [ac (new js/AbortController)]
+    [(.-signal ac)
+     #(.abort ac)]))
+
+(defn promise-with-resolvers
+  []
+  (let [p-obj (js/Promise.withResolvers)]
+    [(.-promise p-obj)
+     (.-resolve p-obj)
+     (.-reject p-obj)]))
 

@@ -37,10 +37,10 @@
   }
 
   .task-row {
-    @apply bg-transparent transition-opacity transition-discrete duration-500 ease-in-out;
+  }
+  .task-row.enter {
   }
 
   .task-row.deleting {
-    @apply bg-red-500/50 opacity-0;
   }
 }
