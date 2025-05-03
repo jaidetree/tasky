@@ -15,7 +15,10 @@ defmodule TaskyWeb.TimeSessionController do
     with {:ok, %TimeSession{} = time_session} <- Tracking.create_time_session(time_session_params) do
       conn
       |> put_status(:created)
-      |> put_resp_header("location", ~p"/api/time_sessions/#{time_session}")
+      |> put_resp_header(
+        "location",
+        ~p"/api/tasks/${time_session.task}/time_sessions/#{time_session}"
+      )
       |> render(:show, time_session: time_session)
     end
   end

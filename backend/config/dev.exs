@@ -6,6 +6,7 @@ config :tasky, Tasky.Repo,
   # password: "postgres",
   hostname: "../postgres_data",
   database: "tasky_dev",
+  port: 5433,
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
   pool_size: 10

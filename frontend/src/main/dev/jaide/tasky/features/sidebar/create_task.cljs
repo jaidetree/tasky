@@ -16,7 +16,7 @@
 (def default-task-draft
   {:id ""
    :title ""
-   :notes ""
+   :description ""
    :estimated_time_map {:hours 0
                         :minutes 20}
    :due_date ""
@@ -102,7 +102,7 @@
                 :context {:task (merge task
                                        (select-keys default-task-draft
                                                     [:title
-                                                     :notes
+                                                     :description
                                                      :estimated_time_map]))
                           :dirty false
                           :error nil}}))}
@@ -182,17 +182,17 @@
               :value title
               :class "bg-stone-700/20 p-2 rounded-sm w-full"}]]))
 
-(defn notes-field
+(defn description-field
   []
-  (let [notes (get-in new-task-fsm [:task :notes])]
+  (let [description (get-in new-task-fsm [:task :description])]
     [field
-     {:id "id_notes"
-      :label "Notes"}
+     {:id "id_description"
+      :label "description"}
      [:textarea
-      {:name "notes"
-       :id "id_notes"
+      {:name "description"
+       :id "id_description"
        :class "bg-stone-700/20 p-2 rounded-sm w-full h-40"
-       :value notes}]]))
+       :value description}]]))
 
 (defn estimated-time-field
   []
@@ -265,7 +265,7 @@
       [:h2.text-xl "New Task"]]
      [:div.flex.flex-col.gap-2
       [title-field]
-      [notes-field]
+      [description-field]
       [estimated-time-field]
       [due-date-field]
       [parent-task-field]

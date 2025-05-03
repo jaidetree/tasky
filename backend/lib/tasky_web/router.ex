@@ -27,12 +27,12 @@ defmodule TaskyWeb.Router do
     resources "/tasks", TaskController do
       post "/complete", TaskController, :complete
       post "/incomplete", TaskController, :incomplete
+      get "/time_sessions/active", TimeSessionController, :active
+      post "/time_sessions/:id/end", TimeSessionController, :end_session
+      post "/time_sessions/:id/interrupt", TimeSessionController, :interrupt
+      resources "/time_sessions", TimeSessionController, except: [:new, :edit]
+      resources "/notes", NoteController, except: [:new, :edit]
     end
-
-    get "/time_sessions/active", TimeSessionController, :active
-    post "/time_sessions/:id/end", TimeSessionController, :end_session
-    post "/time_sessions/:id/interrupt", TimeSessionController, :interrupt
-    resources "/time_sessions", TimeSessionController, except: [:new, :edit]
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development

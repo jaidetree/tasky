@@ -1,3 +1,4 @@
 postgres_data
 .lexical
 .aider*
+frontend/.nrepl-port

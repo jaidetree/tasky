@@ -10,7 +10,7 @@ defmodule Tasky.Tracking.TimeSession do
     field :start_time, :utc_datetime
     field :end_time, :utc_datetime
     field :original_end_time, :utc_datetime
-    field :notes, :string, default: ""
+    field :description, :string, default: ""
 
     belongs_to :task, Task
     belongs_to :interrupted_by_task, Task
@@ -25,7 +25,7 @@ defmodule Tasky.Tracking.TimeSession do
       :start_time,
       :end_time,
       :original_end_time,
-      :notes,
+      :description,
       :task_id,
       :interrupted_by_task_id
     ])

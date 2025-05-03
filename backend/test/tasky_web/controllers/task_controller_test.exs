@@ -7,13 +7,13 @@ defmodule TaskyWeb.TaskControllerTest do
 
   @create_attrs %{
     title: "some title",
-    notes: "some notes",
+    description: "some description",
     estimated_time: 60,
     due_date: ~U[2023-01-15 10:00:00Z]
   }
   @update_attrs %{
     title: "updated title",
-    notes: "updated notes",
+    description: "updated description",
     estimated_time: 120
   }
   @invalid_attrs %{title: nil, estimated_time: nil}

@@ -10,7 +10,7 @@ defmodule Tasky.TrackingTest do
 
     @invalid_attrs %{
       title: nil,
-      notes: nil,
+      description: nil,
       estimated_time: nil,
       due_date: nil,
       completed_at: nil,
@@ -30,7 +30,7 @@ defmodule Tasky.TrackingTest do
     test "create_task/1 with valid data creates a task" do
       valid_attrs = %{
         title: "some title",
-        notes: "some notes",
+        description: "some description",
         estimated_time: 42,
         due_date: ~U[2025-02-24 07:06:00Z],
         completed_at: ~U[2025-02-24 07:06:00Z],
@@ -39,7 +39,7 @@ defmodule Tasky.TrackingTest do
 
       assert {:ok, %Task{} = task} = Tracking.create_task(valid_attrs)
       assert task.title == "some title"
-      assert task.notes == "some notes"
+      assert task.description == "some description"
       assert task.estimated_time == 42
       assert task.due_date == ~U[2025-02-24 07:06:00Z]
       assert task.completed_at == ~U[2025-02-24 07:06:00Z]
@@ -55,7 +55,7 @@ defmodule Tasky.TrackingTest do
 
       update_attrs = %{
         title: "some updated title",
-        notes: "some updated notes",
+        description: "some updated description",
         estimated_time: 43,
         due_date: ~U[2025-02-25 07:06:00Z],
         completed_at: ~U[2025-02-25 07:06:00Z],
@@ -64,7 +64,7 @@ defmodule Tasky.TrackingTest do
 
       assert {:ok, %Task{} = task} = Tracking.update_task(task, update_attrs)
       assert task.title == "some updated title"
-      assert task.notes == "some updated notes"
+      assert task.description == "some updated description"
       assert task.estimated_time == 43
       assert task.due_date == ~U[2025-02-25 07:06:00Z]
       assert task.completed_at == ~U[2025-02-25 07:06:00Z]
@@ -111,7 +111,7 @@ defmodule Tasky.TrackingTest do
 
     import Tasky.TrackingFixtures
 
-    @invalid_attrs %{start_time: nil, end_time: nil, original_end_time: nil, notes: nil}
+    @invalid_attrs %{start_time: nil, end_time: nil, original_end_time: nil, description: nil}
 
     test "list_time_sessions/0 returns all time_sessions" do
       time_session = time_session_fixture()
@@ -130,7 +130,7 @@ defmodule Tasky.TrackingTest do
         start_time: ~U[2025-02-24 07:06:00Z],
         end_time: ~U[2025-02-24 07:08:00Z],
         original_end_time: ~U[2025-02-24 07:06:00Z],
-        notes: "some notes",
+        description: "some description",
         task_id: task.id
       }
 
@@ -138,7 +138,7 @@ defmodule Tasky.TrackingTest do
       assert time_session.start_time == ~U[2025-02-24 07:06:00Z]
       assert time_session.end_time == ~U[2025-02-24 07:08:00Z]
       assert time_session.original_end_time == ~U[2025-02-24 07:06:00Z]
-      assert time_session.notes == "some notes"
+      assert time_session.description == "some description"
     end
 
     test "create_time_session/1 with invalid data returns error changeset" do
@@ -152,7 +152,7 @@ defmodule Tasky.TrackingTest do
         start_time: ~U[2025-02-25 07:06:00Z],
         end_time: ~U[2025-02-25 07:07:00Z],
         original_end_time: ~U[2025-02-25 07:06:00Z],
-        notes: "some updated notes"
+        description: "some updated description"
       }
 
       assert {:ok, %TimeSession{} = time_session} =
@@ -161,7 +161,7 @@ defmodule Tasky.TrackingTest do
       assert time_session.start_time == ~U[2025-02-25 07:06:00Z]
       assert time_session.end_time == ~U[2025-02-25 07:07:00Z]
       assert time_session.original_end_time == ~U[2025-02-25 07:06:00Z]
-      assert time_session.notes == "some updated notes"
+      assert time_session.description == "some updated description"
     end
 
     test "update_time_session/2 with invalid data returns error changeset" do

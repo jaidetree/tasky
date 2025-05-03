@@ -13,7 +13,7 @@
 (def blank-task
   {:id ""
    :title ""
-   :notes ""
+   :description ""
    :estimated_time 20
    :estimated_time_map {:hours 0
                         :minutes 20}

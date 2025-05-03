@@ -21,13 +21,14 @@ defmodule TaskyWeb.TaskJSON do
     %{
       id: task.id,
       title: task.title,
-      notes: task.notes,
+      description: task.description,
       estimated_time: task.estimated_time,
       estimated_time_map: %{
         hours: hours,
-        minutes: minutes,
+        minutes: minutes
       },
       due_date: task.due_date,
+      sort_order: task.sort_order,
       completed_at: task.completed_at,
       created_at: task.inserted_at,
       updated_at: task.updated_at,
@@ -46,7 +47,7 @@ defmodule TaskyWeb.TaskJSON do
         start_time: session.start_time,
         end_time: session.end_time,
         original_end_time: session.original_end_time,
-        notes: session.notes,
+        description: session.description,
         interrupted_by_task_id: session.interrupted_by_task_id
       }
     end

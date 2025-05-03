@@ -22,7 +22,7 @@ defmodule TaskyWeb.TimeSessionJSON do
       start_time: time_session.start_time,
       end_time: time_session.end_time,
       original_end_time: time_session.original_end_time,
-      notes: time_session.notes,
+      description: time_session.description,
       interrupted_by_task_id: time_session.interrupted_by_task_id,
       duration_minutes: TimeSession.duration_minutes(time_session),
       created_at: time_session.inserted_at,

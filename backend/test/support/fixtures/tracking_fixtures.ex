@@ -13,7 +13,7 @@ defmodule Tasky.TrackingFixtures do
       |> Enum.into(%{
         title: "Task #{System.unique_integer([:positive])}",
         estimated_time: 60,
-        notes: "some notes"
+        description: "some description"
       })
       |> Tasky.Tracking.create_task()
 
@@ -29,7 +29,7 @@ defmodule Tasky.TrackingFixtures do
     {:ok, time_session} =
       attrs
       |> Enum.into(%{
-        notes: "some notes",
+        description: "some description",
         start_time: ~U[2025-02-24 07:06:00Z],
         task_id: task.id
       })

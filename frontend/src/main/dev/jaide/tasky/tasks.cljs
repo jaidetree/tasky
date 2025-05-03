@@ -9,7 +9,7 @@
    {:id (v/string)
     :start_time (v/string->date {:accept-dates true})
     :end_time (v/nilable (v/string->date {:accept-dates true}))
-    :notes (v/string)
+    :description (v/string)
     :interrupted_by_task_id (v/nilable (v/string))}))
 
 (def task-validator
@@ -27,7 +27,7 @@
     :estimated_time_map (v/record {:minutes (v/number)
                                    :hours (v/number)})
     :id (v/string)
-    :notes (v/default (v/string) "")
+    :description (v/default (v/string) "")
     :parent_task_id (v/nilable (v/string))
     :title (v/string)
     :time_sessions (v/vector session-validator)
@@ -42,8 +42,8 @@
     :estimated_time (v/nilable (v/number))
     :estimated_time_map (v/record {:minutes (v/number)
                                    :hours (v/number)})
-    :notes (v/nilable
-            (v/string))
+    :description (v/nilable
+                  (v/string))
     :due_date (v/nilable
                (v/union
                 (v/literal "")

@@ -7,11 +7,11 @@ defmodule TaskyWeb.TimeSessionControllerTest do
 
   @create_attrs %{
     start_time: ~U[2023-01-01 12:00:00Z],
-    notes: "some notes"
+    description: "some description"
   }
   @update_attrs %{
     end_time: ~U[2023-01-01 13:00:00Z],
-    notes: "updated notes"
+    description: "updated description"
   }
   @invalid_attrs %{start_time: nil, task_id: nil}
 
@@ -38,7 +38,7 @@ defmodule TaskyWeb.TimeSessionControllerTest do
 
       assert %{
                "id" => ^id,
-               "notes" => "some notes",
+               "description" => "some description",
                "task_id" => task_id
              } = json_response(conn, 200)["data"]
 
@@ -65,7 +65,7 @@ defmodule TaskyWeb.TimeSessionControllerTest do
 
       assert %{
                "id" => ^id,
-               "notes" => "updated notes",
+               "description" => "updated description",
                "end_time" => "2023-01-01T13:00:00Z"
              } = json_response(conn, 200)["data"]
     end
