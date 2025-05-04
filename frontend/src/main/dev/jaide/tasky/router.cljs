@@ -5,7 +5,6 @@
    [dev.jaide.finity.core :as fsm]
    [dev.jaide.tasky.dom :refer [on]]
    [dev.jaide.tasky.state-machines :refer [ratom-fsm]]
-   [dev.jaide.tasky.state.tasks-fsm :refer [tasks-fsm find-task-fsm]]
    [dev.jaide.valhalla.core :as v]))
 
 (defn url->route
@@ -29,7 +28,7 @@
 
      :states {:inactive {}
               :active {:route (v/keyword)
-                       :paths (v/vector (v/string))}}
+                       :paths (v/hash-map (v/string) (v/string))}}
 
      :actions {:init {:url (v/string)}
                :pop {:url (v/string)}
@@ -68,6 +67,7 @@
 (defn navigate
   [path-str]
   (js/window.history.pushState nil nil path-str)
+  (set! (.-scrollTop js/document.documentElement) 0)
   (fsm/dispatch fsm {:type :push :url path-str}))
 
 (defn route
@@ -79,7 +79,7 @@
   (fsm/subscribe
    fsm
    (fn [{:keys [prev next _action]}]
-     (let [task-id (get-in next [:context :paths 0] "")]
+     (let [task-id (get-in next [:context :paths "tasks"] "")]
        (when (not= (:context prev) (:context next))
          (fsm/dispatch form-fsm {:type :update
                                  :data {[:parent_task_id] task-id}}))))))

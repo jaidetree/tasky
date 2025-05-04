@@ -1,17 +1,18 @@
 (ns dev.jaide.tasky.features.tasks
   (:require
-   ["@heroicons/react/24/outline" :refer [ChevronRightIcon]]
+   [reagent.core :refer [atom class-names with-let]]
    [dev.jaide.finity.core :as fsm]
+   [dev.jaide.valhalla.core :as v]
+   [dev.jaide.valhalla.js :as vjs]
    [dev.jaide.tasky.router :as router]
+   [dev.jaide.tasky.paths :as paths]
    [dev.jaide.tasky.state-machines :refer [ratom-fsm]]
    [dev.jaide.tasky.state.app-fsm :refer [app-fsm]]
    [dev.jaide.tasky.state.task-fsm :refer [new-task-fsm-spec]]
    [dev.jaide.tasky.state.tasks-fsm :refer [all-tasks tasks-fsm]]
    [dev.jaide.tasky.views.delete-rocker :refer [delete-rocker]]
    [dev.jaide.tasky.views.transition :as trans]
-   [dev.jaide.valhalla.core :as v]
-   [dev.jaide.valhalla.js :as vjs]
-   [reagent.core :refer [atom class-names with-let]]))
+   ["@heroicons/react/24/outline" :refer [ChevronRightIcon ArrowUturnRightIcon]]))
 
 (defn estimate->map
   [minutes]
@@ -283,11 +284,12 @@
                   :from "opacity-100"
                   :to "opacity-0"})
          :on-transitionend #(fsm/dispatch task-fsm :deleted)}
+
         [td {:class "text-left"}
          [:div.flex.flex-row.flex-nowrap.gap-2.relative
-          {:style {:paddingLeft (str level "rem")}}
+          {:style {:marginLeft (str level "rem")}}
           [:div
-           {:class "absolute -left-6 top-0 h-full flex flex-row items-center gap-2"}
+           {:class "absolute right-full top-0 h-full flex flex-row items-center gap-2 mr-2"}
            (when (> (count subtasks) 0)
              [:button
               {:type "button"
@@ -308,15 +310,26 @@
            {:type "button"
             :on-click #(router/navigate (str "/tasks/" (:id task)))}
            (:title task)]]]
+
+        [td {:class ""}
+         [:button
+          {:class "cursor-pointer text-slate-500"
+           :on-click #(router/navigate (str "/tasks/" (:id task)))}
+          [:> ArrowUturnRightIcon
+           {:class "size-4"}]]]
+
         [td {:class "w-50"}
          (min->str
           (:estimated_time task))]
+
         [td {:class "w-50"}
          (if-let [date (:due_date task)]
            (.toLocaleString date)
            "-")]
+
         [td {:class "w-50"}
          (:tracked_time task)]
+
         [td {:class "w-32"}
          [:div
           {:class "flex flex-row justify-end"}
@@ -324,6 +337,7 @@
             [delete-rocker
              {:id (str "task-" (:id task))
               :on-delete #(fsm/dispatch task-fsm {:type :delete})}])]]]
+
        (when @toggle-atom
          (doall
           (for [task-fsm subtasks]
@@ -399,6 +413,9 @@
         [th
          {:class "rounded-l-lg"}
          "Name"]
+        [th
+         {}
+         ""]
         [th
          {}
          "Estimate"]
