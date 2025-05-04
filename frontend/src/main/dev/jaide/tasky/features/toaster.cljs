@@ -15,7 +15,8 @@
     :title (v/string)
     :content any
     :type (v/enum [:error :success :info])
-    :duration (v/nilable (v/number))}))
+    :duration (v/nilable (v/number))
+    :dismissable (v/boolean)}))
 
 (def toasts-validator
   (v/vector toast-validator))
@@ -68,15 +69,18 @@
 (def toaster-fsm (fsm/atom-fsm toaster-fsm-spec {:atom atom}))
 
 (defn toast
-  [{:keys [content type duration title]
-    :or {duration 3000 type :info}}]
+  [{:keys [content type duration title dismissable]
+    :or {duration 3000
+         type :info
+         dismissable true}}]
   (fsm/dispatch toaster-fsm
                 {:type :pop
                  :toast {:type type
                          :id (str (random-uuid))
                          :title title
                          :content content
-                         :duration duration}}))
+                         :duration duration
+                         :dismissable dismissable}}))
 
 (defn dismiss
   [id]
@@ -84,7 +88,7 @@
 
 (defn toast-message
   [{:keys [toast]}]
-  (let [{:keys [id type title content duration]} toast]
+  (let [{:keys [id type title content duration dismissable]} toast]
     (with-let [clear-timeout (when duration
                                (timeout duration #(dismiss id)))
                state-ref (atom nil)]
@@ -111,11 +115,12 @@
         :on-transition-end (fn [_event]
                              (when (= @state-ref :dismissing)
                                (dismiss id)))}
-       [:button
-        {:class "rounded-full bg-black border border-white p-1 absolute -right-2 -top-2"
-         :on-click #(reset! state-ref :dismissing)}
-        [:> XMarkIcon
-         {:class "size-3 text-white"}]]
+       (when dismissable
+         [:button
+          {:class "rounded-full bg-black border border-white p-1 absolute -right-2 -top-2"
+           :on-click #(reset! state-ref :dismissing)}
+          [:> XMarkIcon
+           {:class "size-3 text-white"}]])
        [:h3
         {:class "font-bold mb-2"}
         title]
