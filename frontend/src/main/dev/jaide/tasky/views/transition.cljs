@@ -6,8 +6,7 @@
    [reagent.core :as r]
    [dev.jaide.finity.core :as fsm]
    [dev.jaide.valhalla.core :as v]
-   [dev.jaide.tasky.dom :refer [abort-controller on promise-with-resolvers]]
-   [dev.jaide.tasky.state-machines :refer [ratom-fsm]]))
+   [dev.jaide.tasky.dom :refer [abort-controller on promise-with-resolvers]]))
 
 (defn request-animation-frame
   [signal]
@@ -17,9 +16,16 @@
        (js/window.requestAnimationFrame resolve)))
     (p/create
      (fn [_resolve reject]
-       (if (.-aborted signal)
-         (reject (.-reason signal))
-         (.addEventListener signal "abort" #(reject (.-reason signal))))))]))
+       (when signal
+         (if (.-aborted signal)
+           (reject (.-reason signal))
+           (.addEventListener signal "abort" #(reject (.-reason signal)))))))]))
+
+(defn- timeout
+  [delay]
+  (p/create
+   (fn [resolve]
+     (js/setTimeout #(resolve) delay))))
 
 (defn- frame-loop
   [duration signal callback]
@@ -110,7 +116,7 @@
     (let [[signal abort] (abort-controller)]
       (-> (p/do
             (request-animation-frame signal)
-            (swap! state-ref assoc :enter false))
+            #_(swap! state-ref assoc :enter false))
           (p/catch
            (fn [_error]
              (abort this)
@@ -121,9 +127,9 @@
     @state-ref))
 
 (defn create
-  []
+  [& [initial]]
   (new AtomTransition
-       (r/atom default-state)
+       (r/atom (or initial default-state))
        (r/atom nil)))
 
 (def subscriber-validator (v/assert fn?))
@@ -178,7 +184,7 @@
                   :context {}}
                  (assoc-in state [:context :subscribers] subs))))}]}))
 
-(def ^:private fsm (ratom-fsm subscriptions-fsm-spec))
+(def ^:private fsm (fsm/atom-fsm subscriptions-fsm-spec {:atom r/atom}))
 
 (defn- end-transition
   [event tr props]
@@ -190,12 +196,20 @@
 
 (defn- track-class
   [{:keys [active enter from to] :as props}]
-  (r/with-let [tr (create)
+  (r/with-let [default-state (merge default-state (when active
+                                                    {:from true}))
+               tr (create default-state)
                handler #(end-transition % tr props)
-               _ (fsm/dispatch fsm {:type :subscribe :handler handler})]
+               _ (fsm/dispatch fsm {:type :subscribe :handler handler})
+               ref #js {:current false}]
+
     (let [state @tr]
-      (when (and active (= state default-state))
-        (start tr))
+      (when (and active (false? (.-current ref)))
+        (set! (.-current ref)
+              true)
+        (p/do
+          (request-animation-frame nil)
+          (start tr)))
       (r/class-names
        (when (:enter state) enter)
        (when (:from state) from)
