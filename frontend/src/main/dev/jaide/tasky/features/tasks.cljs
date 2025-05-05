@@ -146,7 +146,7 @@
   []
   (let [fsm (ratom-fsm new-task-fsm-spec
                        {:id (str "new-task-fsm-" (js/Date.now))})
-        parent-task-id (get-in (router/route) [:paths 0] "")
+        parent-task-id (router/get-selected-task-id)
         subscriptions [(fsm/subscribe fsm
                                       (fn [{:keys [action]}]
                                         (when (= (:type action) :created)
@@ -154,7 +154,8 @@
 
                        (router/sync-parent-id-from-route fsm)]]
 
-    (js/setTimeout #(fsm/dispatch fsm {:type :update :data {[:parent_task_id] parent-task-id}}) 0)
+    (when parent-task-id
+      (js/setTimeout #(fsm/dispatch fsm {:type :update :data {[:parent_task_id] parent-task-id}}) 0))
     [fsm
      (fn []
        (for [unsubscribe subscriptions]
@@ -208,7 +209,7 @@
   []
   (with-let [[form-fsm unsubscribe] (create-new-task-fsm)]
     (let [task (get form-fsm :task)
-          selected-task-id (get-in (router/route) [:paths 0] "")
+          selected-task-id (router/get-selected-task-id)
           form-id (str "new-task-form-" (:id task))
           tasks (->> (get tasks-fsm :tasks)
                      (keep #(let [task-fsm (get-in % [:fsm])]
@@ -396,9 +397,12 @@
             :on-click #(router/navigate (str "/tasks/" (:id task)))}
            (:title task)])])]))
 
+(comment
+  (or "" true))
+
 (defn tasks-table
   [{:keys []}]
-  (let [selected-task-id (get-in (router/route) [:paths 0])
+  (let [selected-task-id (router/get-selected-task-id)
         root-fsms (->> (get-in tasks-fsm [:tasks])
                        (map :fsm)
                        (filter #(let [parent-id (get-in % [:task :parent_task_id])]

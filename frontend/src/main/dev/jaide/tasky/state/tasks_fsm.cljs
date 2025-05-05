@@ -48,7 +48,7 @@
                       (p/then #(dispatch {:type :fetched
                                           :tasks (get % :tasks)}))
                       (p/catch (fn [error]
-                                 #_(js/console.error error)
+                                 (js/console.error error)
                                  (dispatch {:type :error
                                             :error error})))))]}
 
@@ -119,6 +119,11 @@
        (filter #(= (get % :id) task-id))
        (map :fsm)
        (first)))
+
+#_(fsm/subscribe
+   tasks-fsm
+   (fn [{:keys [next]}]
+     (cljs.pprint/pprint next)))
 
 (comment
   @tasks-fsm)

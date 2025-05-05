@@ -9,11 +9,20 @@
 
 (defn url->route
   [url]
-  (let [[route & paths] (s/split (subs url 1) #"/")
-        route (if (s/blank? route)
-                :tasks
-                (keyword route))]
-    [route (vec paths)]))
+  (let [parts (-> url
+                  (subs 1)
+                  (s/split #"/")
+                  (vec))
+        #_#_pattern (re-pattern "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")]
+    (->> parts
+         (partition 2)
+         (map vec)
+         #_(map (fn [[k v]]
+                  [(keyword k) v]))
+         (into {}))))
+
+(comment
+  (url->route (str "/tasks/" (random-uuid))))
 
 (defn location-str
   []
@@ -27,8 +36,7 @@
                :context {}}
 
      :states {:inactive {}
-              :active {:route (v/keyword)
-                       :paths (v/hash-map (v/string) (v/string))}}
+              :active {:routes (v/hash-map (v/string) (v/string))}}
 
      :actions {:init {:url (v/string)}
                :pop {:url (v/string)}
@@ -46,20 +54,20 @@
        :actions [:init]
        :to [:active]
        :do (fn init [_state action]
-             (let [[route paths] (url->route (:url action))]
+             (let [routes (url->route (:url action))]
                {:state :active
-                :context {:route route
-                          :paths paths}
+                :context (if (empty? routes)
+                           {:routes {"tasks" ""}}
+                           {:routes routes})
                 :effect :sync-popstate}))}
 
       {:from [:active]
        :actions [:pop :push]
        :to [:active]
        :do (fn sync [_state action]
-             (let [[route paths] (url->route (:url action))]
+             (let [routes (url->route (:url action))]
                {:state :active
-                :context {:route route
-                          :paths paths}
+                :context {:routes routes}
                 :effect :sync-popstate}))}]}))
 
 (def ^:private fsm (ratom-fsm router-fsm-spec))
@@ -70,9 +78,9 @@
   (set! (.-scrollTop js/document.documentElement) 0)
   (fsm/dispatch fsm {:type :push :url path-str}))
 
-(defn route
+(defn get-selected-task-id
   []
-  (get @fsm :context))
+  (get-in fsm [:routes "tasks"]))
 
 (defn sync-parent-id-from-route
   [form-fsm]
