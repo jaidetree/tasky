@@ -69,11 +69,10 @@
   []
   (js/window.location.pathname.toString))
 
-(def url-param-validator
-  (v/nilable (v/string)))
+(def url-param-validator (v/string))
 
 (def common-validators
-  {"tasks" url-param-validator})
+  {"tasks" (v/nilable url-param-validator)})
 
 (def router-fsm-spec
   (fsm/define
@@ -86,14 +85,16 @@
               :active {:routes (v/union
                                 (v/record
                                  (merge common-validators
-                                        {:task url-param-validator}))
+                                        {"task" url-param-validator}))
                                 (v/record
                                  (merge common-validators
-                                        {:new (v/nilable (v/literal ""))})))}}
+                                        {"new" (v/literal "")}))
+                                (v/record common-validators))}}
 
      :actions {:init {:url (v/string)}
                :pop {:url (v/string)}
-               :push {:url (v/string)}}
+               :push {:route (v/assert map?)
+                      :replace (v/nilable (v/string))}}
 
      :effects {:sync-popstate [{}
                                (fn [{:keys [dispatch]}]
@@ -118,11 +119,15 @@
        :actions [:push]
        :to [:active]
        :do (fn sync [state action]
-             (let [routes (url->route (:url action))]
+             (let [{:keys [route replace]} action
+                   routes (get-in state [:context :routes])]
                {:state :active
-                :context {:routes (merge
-                                   (get-in state [:context :routes])
-                                   routes)}
+                :context {:routes (doto (if (:replace action)
+                                          (-> routes
+                                              (dissoc replace)
+                                              (merge route))
+                                          (merge routes route))
+                                    println)}
                 :effect :sync-popstate}))}
 
       {:from [:active]
@@ -137,13 +142,17 @@
 (def ^:private fsm (ratom-fsm router-fsm-spec))
 
 (defn navigate
-  [path-str]
-  (set! (.-scrollTop js/document.documentElement) 0)
-  (fsm/dispatch fsm {:type :push :url path-str}))
+  [route & {:keys [replace]}]
+  (fsm/dispatch fsm {:type :push :route route :replace replace}))
 
 (defn get-selected-task-id
   []
-  (get-in fsm [:routes "tasks"]))
+  (let [task-id (get-in fsm [:routes "tasks"])]
+    (if (empty? task-id)
+      nil
+      task-id)))
+
+(comment)
 
 (defn sync-parent-id-from-route
   [form-fsm]
@@ -158,21 +167,28 @@
   []
   (get fsm :routes))
 
+#_(fsm/subscribe
+   fsm
+   (fn [{:keys [next action]}]
+     (when (= (:type action) :push)
+       (let [routes (get-in next [:context :routes])
+             path-str (->> ["tasks" "task" "new"]
+                           (reduce
+                            (fn [s prefix]
+                              (let [value (get routes prefix)]
+                                (cond
+                                  (nil? value) s
+                                  (s/blank? value) (str s prefix)
+                                  :else (s prefix "/" value))))))]
+
+         (set! (.-scrollTop js/document.documentElement) 0)
+         (js/window.history.pushState nil nil path-str)))))
+
 (fsm/subscribe
  fsm
  (fn [{:keys [next action]}]
-   (when (= (:type action) :push)
-     (let [routes (get-in next [:context :routes])
-           path-str (->> ["tasks" "task" "new"]
-                         (reduce
-                          (fn [s prefix]
-                            (let [value (get routes prefix)]
-                              (cond
-                                (nil? value) s
-                                (s/blank? value) (str s prefix)
-                                :else (s prefix "/" value))))))]
-
-       (js/window.history.pushState nil nil path-str)))))
+   (pprint {:action action
+            :state next})))
 
 (fsm/dispatch fsm {:type :init :url (location-str)})
 

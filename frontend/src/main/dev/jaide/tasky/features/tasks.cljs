@@ -309,13 +309,13 @@
             {:checked (some? (:completed_at task))}]]
           [:button.flex-grow.block.text-left
            {:type "button"
-            :on-click #(router/navigate (str "/task/" (:id task)))}
+            :on-click #(router/navigate {"task" (:id task)} :replace "new")}
            (:title task)]]]
 
         [td {:class ""}
          [:button
           {:class "cursor-pointer text-slate-500"
-           :on-click #(router/navigate (str "/tasks/" (:id task)))}
+           :on-click #(router/navigate {"tasks" (:id task)})}
           [:> ArrowUturnRightIcon
            {:class "size-4"}]]]
 
@@ -380,7 +380,7 @@
     [:div.mb-4
      [:button
       {:class "text-blue-500 cursor-pointer"
-       :on-click #(router/navigate "/")}
+       :on-click #(router/navigate {"tasks" ""})}
       "All Tasks"]
      (for [task tasks]
        [:<>
@@ -394,7 +394,7 @@
           [:button
            {:type "button"
             :class "text-blue-500 cursor-pointer"
-            :on-click #(router/navigate (str "/tasks/" (:id task)))}
+            :on-click #(router/navigate {"tasks" (:id task)})}
            (:title task)])])]))
 
 (comment
@@ -462,7 +462,7 @@
      [:button
       {:type "button"
        :class "btn bg-blue-500"
-       :on-click new-task}
+       :on-click #(router/navigate {"new" ""} :replace "task")}
       "New Task"]]]
    [tasks-table
     {}]])

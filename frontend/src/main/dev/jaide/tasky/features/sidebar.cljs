@@ -7,14 +7,14 @@
 
 (defn sidebar-active?
   [routes]
-  (or (contains? routes "task")
+  (or (get routes "task")
       (contains? routes "new")))
 
 (defn routes->state
   [routes]
   (cond
     (contains? routes "new")  [:new-task nil]
-    (contains? routes "task") [:view-task (get routes :task)]
+    (get routes "task") [:view-task (get routes :task)]
     :else [:closed]))
 
 (defn sidebar

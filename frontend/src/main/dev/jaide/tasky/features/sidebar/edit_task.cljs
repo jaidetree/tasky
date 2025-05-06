@@ -146,7 +146,7 @@
      {:on-submit #(submit-form % task-fsm)
       :on-input #(update-task % task-fsm)}
      [:header
-      [:h2.text-xl "New Task"]]
+      [:h2.text-xl "Edit Task"]]
      [:div.flex.flex-col.gap-2
       [title-field
        props]
