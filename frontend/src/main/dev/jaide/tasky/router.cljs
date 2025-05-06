@@ -7,22 +7,63 @@
    [dev.jaide.tasky.state-machines :refer [ratom-fsm]]
    [dev.jaide.valhalla.core :as v]))
 
-(defn url->route
-  [url]
-  (let [parts (-> url
-                  (subs 1)
-                  (s/split #"/")
-                  (vec))
-        #_#_pattern (re-pattern "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")]
-    (->> parts
-         (partition 2)
-         (map vec)
-         #_(map (fn [[k v]]
-                  [(keyword k) v]))
-         (into {}))))
+(defn tasks-route
+  "Handles navigating hierarchical tasks"
+  [{paths :_ :as routes}]
+  (let [[route id & remaining] paths]
+    (if (= route "tasks")
+      (assoc routes route id :_ remaining)
+      routes)))
+
+(defn task-route
+  "Handles viewing a task in the sidebar"
+  [{paths :_ :as routes}]
+  (let [[route id & remaining] paths]
+    (if (= route "task")
+      (assoc routes route id :_ [])
+      routes)))
+
+(defn new-route
+  "Handles creating a new task in the sidebar"
+  [{paths :_ :as routes}]
+  (let [[route & _remaining] paths]
+    (if (= route "new")
+      (assoc routes route "" :_ [])
+      routes)))
+
+(def route-parsers [tasks-route
+                    task-route
+                    new-route])
+
+(defn parse-routes
+  [paths]
+  (loop [routes {:_ paths}
+         parsers route-parsers]
+    (let [[parser & parsers] parsers
+          routes (parser routes)]
+      (cond
+        (or (empty? (:_ routes))
+            (empty? parsers))
+        (assoc routes :_
+               (if (nil? (:_ routes))
+                 []
+                 (vec (:_ routes))))
+
+        :else
+        (recur routes
+               parsers)))))
 
 (comment
-  (url->route (str "/tasks/" (random-uuid))))
+  (parse-routes ["tasks" "xxxyyyzzz"])
+  (parse-routes ["tasks" "xxxyyyzzz" "task" "aaabbbccc"])
+  (parse-routes ["tasks" "xxxyyyzzz" "task" "aaabbbccc" "new"])
+  (parse-routes ["tasks" "xxxyyyzzz" "new" "task" "aaabbbccc"])
+  (parse-routes ["tasks" "xxxyyyzzz" "new"]))
+
+(defn url->route
+  [url]
+  (let [paths (s/split (subs url 1) #"/")]
+    (parse-routes paths)))
 
 (defn location-str
   []
@@ -56,7 +97,7 @@
        :do (fn init [_state action]
              (let [routes (url->route (:url action))]
                {:state :active
-                :context (if (empty? routes)
+                :context (if (empty? (dissoc routes :_))
                            {:routes {"tasks" ""}}
                            {:routes routes})
                 :effect :sync-popstate}))}
