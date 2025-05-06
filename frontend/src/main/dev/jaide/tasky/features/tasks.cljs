@@ -309,7 +309,7 @@
             {:checked (some? (:completed_at task))}]]
           [:button.flex-grow.block.text-left
            {:type "button"
-            :on-click #(router/navigate (str "/tasks/" (:id task)))}
+            :on-click #(router/navigate (str "/task/" (:id task)))}
            (:title task)]]]
 
         [td {:class ""}

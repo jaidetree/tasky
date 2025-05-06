@@ -103,7 +103,18 @@
                 :effect :sync-popstate}))}
 
       {:from [:active]
-       :actions [:pop :push]
+       :actions [:push]
+       :to [:active]
+       :do (fn sync [state action]
+             (let [routes (url->route (:url action))]
+               {:state :active
+                :context {:routes (merge
+                                   (get-in state [:context :routes])
+                                   routes)}
+                :effect :sync-popstate}))}
+
+      {:from [:active]
+       :actions [:pop]
        :to [:active]
        :do (fn sync [_state action]
              (let [routes (url->route (:url action))]
@@ -115,7 +126,6 @@
 
 (defn navigate
   [path-str]
-  (js/window.history.pushState nil nil path-str)
   (set! (.-scrollTop js/document.documentElement) 0)
   (fsm/dispatch fsm {:type :push :url path-str}))
 
@@ -132,6 +142,26 @@
        (when (not= (:context prev) (:context next))
          (fsm/dispatch form-fsm {:type :update
                                  :data {[:parent_task_id] task-id}}))))))
+
+(defn routes
+  []
+  (get fsm :routes))
+
+(fsm/subscribe
+ fsm
+ (fn [{:keys [next action]}]
+   (when (= (:type action) :push)
+     (let [routes (get-in next [:context :routes])
+           path-str (->> ["tasks" "task" "new"]
+                         (reduce
+                          (fn [s prefix]
+                            (let [value (get routes prefix)]
+                              (cond
+                                (nil? value) s
+                                (s/blank? value) (str s prefix)
+                                :else (s prefix "/" value))))))]
+
+       (js/window.history.pushState nil nil path-str)))))
 
 (fsm/dispatch fsm {:type :init :url (location-str)})
 
