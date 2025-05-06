@@ -69,6 +69,12 @@
   []
   (js/window.location.pathname.toString))
 
+(def url-param-validator
+  (v/nilable (v/string)))
+
+(def common-validators
+  {"tasks" url-param-validator})
+
 (def router-fsm-spec
   (fsm/define
     {:id :router
@@ -77,7 +83,13 @@
                :context {}}
 
      :states {:inactive {}
-              :active {:routes (v/hash-map (v/string) (v/string))}}
+              :active {:routes (v/union
+                                (v/record
+                                 (merge common-validators
+                                        {:task url-param-validator}))
+                                (v/record
+                                 (merge common-validators
+                                        {:new (v/nilable (v/literal ""))})))}}
 
      :actions {:init {:url (v/string)}
                :pop {:url (v/string)}
@@ -142,7 +154,6 @@
        (when (not= (:context prev) (:context next))
          (fsm/dispatch form-fsm {:type :update
                                  :data {[:parent_task_id] task-id}}))))))
-
 (defn routes
   []
   (get fsm :routes))
@@ -164,11 +175,6 @@
        (js/window.history.pushState nil nil path-str)))))
 
 (fsm/dispatch fsm {:type :init :url (location-str)})
-
-#_(fsm/subscribe
-   fsm
-   (fn [{:keys [prev next action]}]
-     (pprint action)))
 
 (comment
   @router)
