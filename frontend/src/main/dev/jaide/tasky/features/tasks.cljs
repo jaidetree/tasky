@@ -309,7 +309,7 @@
             {:checked (some? (:completed_at task))}]]
           [:button.flex-grow.block.text-left
            {:type "button"
-            :on-click #(router/navigate {"task" (:id task)} :replace "new")}
+            :on-click #(router/navigate {"task" (:id task)} :replace :sidebar)}
            (:title task)]]]
 
         [td {:class ""}
@@ -462,7 +462,7 @@
      [:button
       {:type "button"
        :class "btn bg-blue-500"
-       :on-click #(router/navigate {"new" ""} :replace "task")}
+       :on-click #(router/navigate {"new" ""} :replace :sidebar)}
       "New Task"]]]
    [tasks-table
     {}]])

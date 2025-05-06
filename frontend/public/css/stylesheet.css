@@ -308,6 +308,15 @@
   .w-\[18\.75rem\] {
     width: 18.75rem;
   }
+  .w-\[24rem\] {
+    width: 24rem;
+  }
+  .w-\[26rem\] {
+    width: 26rem;
+  }
+  .w-\[28rem\] {
+    width: 28rem;
+  }
   .w-\[30rem\] {
     width: 30rem;
   }
@@ -442,6 +451,9 @@
   .border-l-4 {
     border-left-style: var(--tw-border-style);
     border-left-width: 4px;
+  }
+  .border-slate-600 {
+    border-color: var(--color-slate-600);
   }
   .border-slate-700 {
     border-color: var(--color-slate-700);

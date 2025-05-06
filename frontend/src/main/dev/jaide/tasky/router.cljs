@@ -18,9 +18,11 @@
 (defn task-route
   "Handles viewing a task in the sidebar"
   [{paths :_ :as routes}]
-  (let [[route id & remaining] paths]
+  (let [[route id & _remaining] paths]
     (if (= route "task")
-      (assoc routes route id :_ [])
+      (-> routes
+          (assoc-in [:sidebar route] id)
+          (assoc :_ []))
       routes)))
 
 (defn new-route
@@ -28,7 +30,9 @@
   [{paths :_ :as routes}]
   (let [[route & _remaining] paths]
     (if (= route "new")
-      (assoc routes route "" :_ [])
+      (-> routes
+          (assoc-in [:sidebar route] "")
+          (assoc :_ []))
       routes)))
 
 (def route-parsers [tasks-route
@@ -82,19 +86,19 @@
                :context {}}
 
      :states {:inactive {}
-              :active {:routes (v/union
-                                (v/record
-                                 (merge common-validators
-                                        {"task" url-param-validator}))
-                                (v/record
-                                 (merge common-validators
-                                        {"new" (v/literal "")}))
-                                (v/record common-validators))}}
+              :active {:routes
+                       (v/record
+                        {"tasks" (v/nilable (v/string))
+                         :sidebar (v/nilable
+                                   (v/union
+                                    (v/literal {})
+                                    (v/record {"task" (v/string)})
+                                    (v/record {"new" (v/literal "")})))})}}
 
      :actions {:init {:url (v/string)}
                :pop {:url (v/string)}
-               :push {:route (v/assert map?)
-                      :replace (v/nilable (v/string))}}
+               :push {:route (v/nilable (v/assert map?))
+                      :replace (v/nilable (v/keyword))}}
 
      :effects {:sync-popstate [{}
                                (fn [{:keys [dispatch]}]
@@ -122,10 +126,9 @@
              (let [{:keys [route replace]} action
                    routes (get-in state [:context :routes])]
                {:state :active
-                :context {:routes (doto (if (:replace action)
+                :context {:routes (doto (if replace
                                           (-> routes
-                                              (dissoc replace)
-                                              (merge route))
+                                              (assoc replace route))
                                           (merge routes route))
                                     println)}
                 :effect :sync-popstate}))}
@@ -167,22 +170,24 @@
   []
   (get fsm :routes))
 
-#_(fsm/subscribe
-   fsm
-   (fn [{:keys [next action]}]
-     (when (= (:type action) :push)
-       (let [routes (get-in next [:context :routes])
-             path-str (->> ["tasks" "task" "new"]
-                           (reduce
-                            (fn [s prefix]
-                              (let [value (get routes prefix)]
-                                (cond
-                                  (nil? value) s
-                                  (s/blank? value) (str s prefix)
-                                  :else (s prefix "/" value))))))]
+(fsm/subscribe
+ fsm
+ (fn [{:keys [next action]}]
+   (when (= (:type action) :push)
+     (let [routes (get-in next [:context :routes])
+           path-str (->> [["tasks"] [:sidebar "task"] [:sidebar "new"]]
+                         (keep
+                          (fn [path]
+                            (let [value (get-in routes path)
+                                  prefix (last path)]
+                              (when (and value (not (s/blank? value)))
+                                (str prefix "/" value)))))
+                         (s/join "/")
+                         (str "/"))
+           _ (println "path-str" path-str)]
 
-         (set! (.-scrollTop js/document.documentElement) 0)
-         (js/window.history.pushState nil nil path-str)))))
+       (set! (.-scrollTop js/document.documentElement) 0)
+       (js/window.history.pushState nil nil path-str)))))
 
 (fsm/subscribe
  fsm
