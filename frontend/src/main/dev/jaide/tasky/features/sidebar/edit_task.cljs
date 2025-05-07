@@ -131,9 +131,36 @@
          {:value (:id task) :key (:id task)}
          (:title task)])]]))
 
+(defn estimate->map
+  [minutes]
+  (let [hours (js/Math.floor (/ minutes 60))
+        minutes (- minutes (* hours 60))]
+    [hours minutes]))
+
 (defn update-task
   [event task-fsm]
-  nil)
+  (let [name (-> event (.-target) (.-name) (keyword))
+        value (-> event (.-target) (.-value))
+        {:keys [completed_at]} (get task-fsm :task)
+        data (case name
+               :estimated_time_minutes
+               {[:estimated_time_map :minutes] (js/Number value)}
+
+               :estimated_time_hours
+               {[:estimated_time_map :minutes] (js/Number value)}
+
+               :estimated_time
+               (let [value (js/Number value)
+                     [hours minutes] (estimate->map value)]
+                 {[:estimated_time] value
+                  [:estimated_time_map :hours] hours
+                  [:estimated_time_map :minutes] minutes})
+
+               :complete {[:completed_at] (if (instance? js/Date completed_at)
+                                            nil
+                                            (new js/Date))}
+               {[name] value})]
+    (fsm/dispatch task-fsm {:type :update :data data})))
 
 (defn submit-form
   [event task-fsm]
