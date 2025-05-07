@@ -22,10 +22,11 @@
      [:div.flex.flex-row.items-stretch.min-h-screen
       (case state
         :tasks [:main.flex-grow.mx-auto.px-4.py-20.overflow-auto.max-w-full
-                [tasks-index {:tasks (:tasks context)}]]
+                [tasks-index {:tasks (:tasks context)}]
+                [:div.mt-20
+                 [diagrams]]]
         [:div "Loading..."])
       [sidebar]]
-     [toaster]
-     [diagrams]]))
+     [toaster]]))
 
 (fetch-tasks)

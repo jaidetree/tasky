@@ -66,18 +66,18 @@
               :type :text
               :name :title
               :value title
-              :class "bg-stone-700/20 p-2 rounded-sm w-full"}]]))
+              :class "bg-stone-800 p-2 rounded-sm w-full"}]]))
 
 (defn description-field
   [{:keys [task-fsm]}]
   (let [description (get-in task-fsm [:task :description])]
     [field
      {:id "id_description"
-      :label "description"}
+      :label "Description"}
      [:textarea
       {:name "description"
        :id "id_description"
-       :class "bg-stone-700/20 p-2 rounded-sm w-full h-40"
+       :class "bg-stone-800 p-2 rounded-sm w-full h-40"
        :value description}]]))
 
 (defn estimated-time-field
@@ -86,11 +86,11 @@
    {:id "id_estimated_time"
     :label "Estimate"}
    [:select
-    {:class "text-sm border border-slate-700 b-2 rounded p-2"
+    {:class "bg-stone-800 rounded-sm p-2 w-full"
      :name "estimated_time"
      :value (js/String (get-in task-fsm [:task :estimated_time]))}
     [:option
-     {:value "0"}
+     {:value ""}
      "-- unknown --"]
     (for [[label min] estimates]
       [:option
@@ -108,7 +108,7 @@
       {:id "id_due_date"
        :type "datetime-local"
        :value due-date
-       :class "bg-stone-700/20 p-2 rounded-sm w-full"}]]))
+       :class "bg-stone-800 p-2 rounded-sm w-full"}]]))
 
 (defn parent-task-field
   [{:keys [task-fsm]}]
@@ -122,7 +122,7 @@
       :label "Parent Task"}
      [:select
       {:id "id_parent_task_id"
-       :class "bg-stone-700/20 p-2 rounded-sm w-full"
+       :class "bg-stone-800 p-2 rounded-sm w-full"
        :name "parent_task_id"
        :value parent-task-id}
       [:option {:value ""} "-- No Parent Task --"]
@@ -166,7 +166,7 @@
 
 (defn task-view
   [{:keys [task-id]}]
-  (r/with-let [task-fsm (tasks-fsm/find-task-fsm task-id)]
+  (let [task-fsm (tasks-fsm/find-task-fsm task-id)]
     [:div
      [edit-task-form
       {:task-fsm task-fsm}]]))

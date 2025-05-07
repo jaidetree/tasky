@@ -115,6 +115,7 @@
 
 (defn find-task-fsm
   [task-id]
+  (println "task-id" task-id)
   (->> (get tasks-fsm :tasks)
        (filter #(= (get % :id) task-id))
        (map :fsm)

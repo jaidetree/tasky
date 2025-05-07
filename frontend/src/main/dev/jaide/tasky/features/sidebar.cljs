@@ -14,7 +14,7 @@
   [{:keys [sidebar]}]
   (cond
     (contains? sidebar "new")  [:new-task nil]
-    (get sidebar "task") [:view-task (get sidebar :task)]
+    (get sidebar "task") [:view-task (get sidebar "task")]
     :else [:closed]))
 
 (defn sidebar
@@ -23,10 +23,10 @@
         [state & args] (routes->state routes)]
     [:div
      {:class (class-names
-              "bg-gray-200 dark:bg-slate-700/20 overflow-hidden transition-all duration-500"
-              (if (sidebar-active? routes) "w-[30rem]" "w-0"))}
+              "bg-gray-200 dark:bg-black/40 overflow-hidden transition-all duration-500"
+              (if (sidebar-active? routes) "w-[40rem]" "w-0"))}
      [:div
-      {:class "w-[26rem] p-4 relative"}
+      {:class "w-full p-8 relative"}
       (when (not= state :closed)
         [:button
          {:class "rounded-full p-2 bg-black text-white border border-slate-600 absolute right-4"

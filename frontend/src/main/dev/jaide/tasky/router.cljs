@@ -129,8 +129,7 @@
                 :context {:routes (doto (if replace
                                           (-> routes
                                               (assoc replace route))
-                                          (merge routes route))
-                                    println)}
+                                          (merge routes route)))}
                 :effect :sync-popstate}))}
 
       {:from [:active]
@@ -142,15 +141,15 @@
                 :context {:routes routes}
                 :effect :sync-popstate}))}]}))
 
-(def ^:private fsm (ratom-fsm router-fsm-spec))
+(def router-fsm (ratom-fsm router-fsm-spec))
 
 (defn navigate
   [route & {:keys [replace]}]
-  (fsm/dispatch fsm {:type :push :route route :replace replace}))
+  (fsm/dispatch router-fsm {:type :push :route route :replace replace}))
 
 (defn get-selected-task-id
   []
-  (let [task-id (get-in fsm [:routes "tasks"])]
+  (let [task-id (get-in router-fsm [:routes "tasks"])]
     (if (empty? task-id)
       nil
       task-id)))
@@ -160,7 +159,7 @@
 (defn sync-parent-id-from-route
   [form-fsm]
   (fsm/subscribe
-   fsm
+   router-fsm
    (fn [{:keys [prev next _action]}]
      (let [task-id (get-in next [:context :paths "tasks"] "")]
        (when (not= (:context prev) (:context next))
@@ -168,10 +167,10 @@
                                  :data {[:parent_task_id] task-id}}))))))
 (defn routes
   []
-  (get fsm :routes))
+  (get router-fsm :routes))
 
 (fsm/subscribe
- fsm
+ router-fsm
  (fn [{:keys [next action]}]
    (when (= (:type action) :push)
      (let [routes (get-in next [:context :routes])
@@ -183,19 +182,18 @@
                               (when (and value (not (s/blank? value)))
                                 (str prefix "/" value)))))
                          (s/join "/")
-                         (str "/"))
-           _ (println "path-str" path-str)]
+                         (str "/"))]
 
        (set! (.-scrollTop js/document.documentElement) 0)
        (js/window.history.pushState nil nil path-str)))))
 
-(fsm/subscribe
- fsm
- (fn [{:keys [next action]}]
-   (pprint {:action action
-            :state next})))
+#_(fsm/subscribe
+   fsm
+   (fn [{:keys [next action]}]
+     (pprint {:action action
+              :state next})))
 
-(fsm/dispatch fsm {:type :init :url (location-str)})
+(fsm/dispatch router-fsm {:type :init :url (location-str)})
 
 (comment
   @router)

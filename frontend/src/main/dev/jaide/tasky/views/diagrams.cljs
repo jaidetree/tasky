@@ -4,10 +4,12 @@
    [dev.jaide.finity.core :as fsm]
    [dev.jaide.tasky.state.task-fsm :refer [task-fsm-spec new-task-fsm-spec]]
    [dev.jaide.tasky.state.tasks-fsm :refer [tasks-fsm-spec]]
-   [dev.jaide.tasky.views.delete-rocker :refer [delete-rocker-fsm-spec]]))
+   [dev.jaide.tasky.views.delete-rocker :refer [delete-rocker-fsm-spec]]
+   [dev.jaide.tasky.router :refer [router-fsm-spec]]))
 
 (def specs
-  [tasks-fsm-spec
+  [router-fsm-spec
+   tasks-fsm-spec
    task-fsm-spec
    new-task-fsm-spec
    delete-rocker-fsm-spec])
