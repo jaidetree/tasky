@@ -21,7 +21,7 @@
     [hours minutes]))
 
 (defn update-task
-  [task-fsm event]
+  [event task-fsm]
   (let [name (-> event (.-target) (.-name) (keyword))
         value (-> event (.-target) (.-value))
         {:keys [completed_at]} (get task-fsm :task)
@@ -177,7 +177,7 @@
           :parent_task_id (value (v/string))})))
 
 (defn submit-form
-  [form-fsm event]
+  [event form-fsm]
   (.preventDefault event)
   (let [form-data (v/parse form-data-validator event)
         [hours minutes] (estimate->map (:estimated_time form-data))
@@ -222,9 +222,9 @@
                                 (get task-fsm :task)))))]
       [:form
        {:id form-id
-        :on-submit #(submit-form form-fsm %)
-        :on-change #(update-task form-fsm %)
-        :on-input #(update-task form-fsm %)
+        :on-submit #(submit-form % form-fsm)
+        :on-change #(update-task % form-fsm)
+        :on-input #(update-task % form-fsm)
         :on-keydown submit-form-on-enter
         :class "flex flex-row px-2 gap-4 bg-stone-950/50 py-2 items-center rounded-lg mx-4"}
 

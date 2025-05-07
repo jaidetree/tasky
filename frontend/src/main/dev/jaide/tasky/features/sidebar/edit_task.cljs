@@ -4,6 +4,7 @@
    [reagent.core :as r]
    [dev.jaide.finity.core :as fsm]
    [dev.jaide.valhalla.core :as v]
+   [dev.jaide.valhalla.js :as vjs]
    [dev.jaide.tasky.router :as router]
    [dev.jaide.tasky.utils :refer [class-names]]
    [dev.jaide.tasky.tasks :refer [task-validator session-validator fetch-task]]
@@ -162,9 +163,31 @@
                {[name] value})]
     (fsm/dispatch task-fsm {:type :update :data data})))
 
+(defn value
+  [& validators]
+  (apply v/-> (vjs/prop "value") validators))
+
+(def form-data-validator
+  (v/-> (vjs/prop "currentTarget")
+        (vjs/prop "elements")
+        (vjs/record
+         {:title (value (v/string) (v/assert #(pos? (count %))))
+          :due_date (value (v/union
+                            (v/literal "")
+                            (v/string->date)))
+          :estimated_time (value (v/string->number))
+          :parent_task_id (value (v/string))})))
+
 (defn submit-form
-  [event task-fsm]
-  nil)
+  [event form-fsm]
+  (.preventDefault event)
+  (let [form-data (v/parse form-data-validator event)
+        [hours minutes] (estimate->map (:estimated_time form-data))
+        form-data (merge form-data
+                         {:estimated_time_map {:hours hours
+                                               :minutes minutes}})]
+    (-> event .-currentTarget .-elements .-title .focus)
+    (fsm/dispatch form-fsm {:type :submit :form-data form-data})))
 
 (defn edit-task-form
   [{:keys [task-fsm]}]
