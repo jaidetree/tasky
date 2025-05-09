@@ -467,3 +467,8 @@
    [tasks-table
     {}]])
 
+(defn task-view
+  [{:keys []}]
+  [:div
+   [tasks-table]])
+

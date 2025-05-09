@@ -2,9 +2,10 @@
   (:require
    [reagent.core :as r]
    [dev.jaide.finity.core :as fsm]
+   [dev.jaide.tasky.router :as router]
    [dev.jaide.tasky.features.sidebar :refer [sidebar]]
    [dev.jaide.tasky.state.tasks-fsm :refer [tasks-fsm]]
-   [dev.jaide.tasky.features.tasks :refer [tasks-index]]
+   [dev.jaide.tasky.features.tasks :refer [tasks-index task-view]]
    [dev.jaide.tasky.features.toaster :refer [toaster]]
    [dev.jaide.tasky.views.diagrams :refer [diagrams]]))
 
@@ -22,7 +23,10 @@
      [:div.flex.flex-row.items-stretch.min-h-screen
       (case state
         :tasks [:main.flex-grow.mx-auto.px-4.py-20.overflow-auto.max-w-full
-                [tasks-index {:tasks (:tasks context)}]
+                (let [routes (router/routes)]
+                  (cond
+                    (not= (get routes "tasks") "") [task-view]
+                    :else [tasks-index {:tasks (:tasks context)}]))
                 [:div.mt-20
                  [diagrams]]]
         [:div "Loading..."])
