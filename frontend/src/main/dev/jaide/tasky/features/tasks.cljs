@@ -2,114 +2,14 @@
   (:require
    [reagent.core :refer [atom class-names with-let]]
    [dev.jaide.finity.core :as fsm]
-   [dev.jaide.valhalla.core :as v]
-   [dev.jaide.valhalla.js :as vjs]
    [dev.jaide.tasky.router :as router]
-   [dev.jaide.tasky.paths :as paths]
-   [dev.jaide.tasky.state-machines :refer [ratom-fsm]]
    [dev.jaide.tasky.state.selectors :as select]
    [dev.jaide.tasky.state.app-fsm :refer [app-fsm]]
-   [dev.jaide.tasky.state.task-fsm :refer [new-task-fsm-spec]]
    [dev.jaide.tasky.state.tasks-fsm :refer [all-tasks tasks-fsm]]
    [dev.jaide.tasky.views.delete-rocker :refer [delete-rocker]]
    [dev.jaide.tasky.views.task-form :as task-form]
    [dev.jaide.tasky.views.transition :as trans]
    ["@heroicons/react/24/outline" :refer [ChevronRightIcon ArrowUturnRightIcon]]))
-
-(defn title
-  [{:keys [value]}]
-  [:input.flex-grow
-   {:name "title"
-    :class "text-sm w-full bg-slate-600/30 p-2 rounded"
-    :value value
-    :placeholder "New Task Title"}])
-
-(defn create-new-task-fsm
-  []
-  (let [fsm (ratom-fsm new-task-fsm-spec
-                       {:id (str "new-task-fsm-" (js/Date.now))})
-        parent-task-id @select/selected-task-id
-        subscriptions [(fsm/subscribe fsm
-                                      (fn [{:keys [action]}]
-                                        (when (= (:type action) :created)
-                                          (fsm/dispatch tasks-fsm :refresh))))
-
-                       (router/sync-parent-id-from-route fsm)]]
-
-    (when parent-task-id
-      (js/setTimeout #(fsm/dispatch fsm {:type :update :data {[:parent_task_id] parent-task-id}}) 0))
-    [fsm
-     (fn []
-       (for [unsubscribe subscriptions]
-         (unsubscribe)))]))
-
-(defn value
-  [& validators]
-  (apply v/-> (vjs/prop "value") validators))
-
-(def form-data-validator
-  (v/-> (vjs/prop "currentTarget")
-        (vjs/prop "elements")
-        (vjs/record
-         {:title (value (v/string) (v/assert #(pos? (count %))))
-          :due_date (value (v/union
-                            (v/literal "")
-                            (v/string->date)))
-          :estimated_time (value (v/string->number))
-          :parent_task_id (value (v/string))})))
-
-(defn submit-form
-  [event form-fsm]
-  (.preventDefault event)
-  (let [form-data (v/parse form-data-validator event)]
-    (-> event .-currentTarget .-elements .-title .focus)
-    (fsm/dispatch form-fsm {:type :submit :form-data form-data})))
-
-(defn submit-form-on-enter
-  [keyboard-event]
-  (when (= (.-key keyboard-event) "Enter")
-    (.preventDefault keyboard-event)
-    (.stopImmediatePropagation keyboard-event)
-    (.. keyboard-event -currentTarget requestSubmit)))
-
-(defn new-task-form
-  []
-  (with-let [[form-fsm unsubscribe] (create-new-task-fsm)]
-    (let [task (get form-fsm :task)
-          selected-task-fsm @select/selected-task-fsm
-          form-id "new-task-form"
-          tasks (cons (:task selected-task-fsm)
-                      @(select/child-tasks (get-in selected-task-fsm [:task :id])))]
-      [:form
-       {:id form-id
-        :on-submit #(submit-form % form-fsm)
-        :on-change #(task-form/update-task % form-fsm)
-        :on-input #(task-form/update-task % form-fsm)
-        :on-keydown submit-form-on-enter
-        :class "flex flex-row px-2 gap-4 bg-stone-950/50 py-2 items-center rounded-lg mx-4"}
-
-       [:div {:class "text-left flex-grow"}
-        [title
-         {:value (:title task)}]]
-
-       [:div {}
-        [task-form/estimate
-         {:form-id form-id
-          :value (:estimated_time task)}]]
-
-       [:div {:class "min-w-32"}
-        [task-form/due-date
-         {:form-id form-id
-          :value (task-form/date->string (:due_date task))}]]
-
-       [:div {:class "text-sm"}
-        [task-form/parent-task
-         {:form-id form-id
-          :tasks tasks
-          :value (:parent_task_id task)}]]])
-
-    (finally
-      (unsubscribe))))
 
 (defn th
   [{:as attrs} & children]
@@ -291,12 +191,8 @@
             [task-row {:key (:id task)
                        :task-fsm task-fsm
                        :tasks-fsm tasks-fsm}])))]]
-     [new-task-form
+     [task-form/new-task-form
       {}]]))
-
-(defn new-task
-  []
-  (fsm/dispatch app-fsm {:type :new-task}))
 
 (defn tasks-index
   [{:keys []}]

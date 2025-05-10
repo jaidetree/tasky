@@ -176,7 +176,9 @@
         [task-form/parent-task
          {:id "task-parent-task-id"
           :value (:parent_task_id task)
-          :tasks @select/all-tasks}]]]]
+          :options (task-form/tasks->options
+                    @select/all-tasks
+                    @select/tasks-by-id)}]]]]
      [:section
       [:div.p-4.rounded-md.bg-zinc-800
        [editable-description]]]]))

@@ -58,4 +58,13 @@
      (->> child-tasks
           (map :task)))))
 
+(def tasks-by-id
+  (r/reaction
+   (let [tasks @all-tasks]
+     (->> tasks
+          (reduce
+           (fn [m task]
+             (assoc m (:id task) task))
+           {})))))
+
 

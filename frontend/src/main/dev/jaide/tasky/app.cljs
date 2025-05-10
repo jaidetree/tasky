@@ -7,7 +7,6 @@
    [dev.jaide.tasky.features.tasks :refer [tasks-index]]
    [dev.jaide.tasky.features.task :refer [task-view]]
    [dev.jaide.tasky.features.toaster :refer [toaster]]
-   [dev.jaide.tasky.features.sidebar :refer [sidebar]]
    [dev.jaide.tasky.views.diagrams :refer [diagrams]]))
 
 (defn fetch-tasks
@@ -35,8 +34,7 @@
                     :else [tasks-index {:tasks (:tasks context)}]))
                 [:div.mt-20
                  [diagrams]]]
-        [:div "Loading..."])
-      [sidebar]]
+        [:div "Loading..."])]
      [toaster]]))
 
 (fetch-tasks)
