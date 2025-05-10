@@ -147,13 +147,6 @@
   [route & {:keys [replace]}]
   (fsm/dispatch router-fsm {:type :push :route route :replace replace}))
 
-(defn get-selected-task-id
-  []
-  (let [task-id (get-in router-fsm [:routes "tasks"])]
-    (if (empty? task-id)
-      nil
-      task-id)))
-
 (comment)
 
 (defn sync-parent-id-from-route

@@ -3,10 +3,11 @@
    [reagent.core :as r]
    [dev.jaide.finity.core :as fsm]
    [dev.jaide.tasky.router :as router]
-   [dev.jaide.tasky.features.sidebar :refer [sidebar]]
    [dev.jaide.tasky.state.tasks-fsm :refer [tasks-fsm]]
-   [dev.jaide.tasky.features.tasks :refer [tasks-index task-view]]
+   [dev.jaide.tasky.features.tasks :refer [tasks-index]]
+   [dev.jaide.tasky.features.task :refer [task-view]]
    [dev.jaide.tasky.features.toaster :refer [toaster]]
+   [dev.jaide.tasky.features.sidebar :refer [sidebar]]
    [dev.jaide.tasky.views.diagrams :refer [diagrams]]))
 
 (defn fetch-tasks
@@ -20,9 +21,14 @@
   []
   (let [{:keys [state context]} @tasks-fsm]
     [:div
+     [:header.px-12.py-8
+      {:class "flex flex-row justify-between items-end px-8"}
+      [:h1
+       {:class "text-2xl font-bold"}
+       "Tasky"]]
      [:div.flex.flex-row.items-stretch.min-h-screen
       (case state
-        :tasks [:main.flex-grow.mx-auto.px-4.py-20.overflow-auto.max-w-full
+        :tasks [:main.flex-grow.mx-auto.px-4.overflow-auto.max-w-full
                 (let [routes (router/routes)]
                   (cond
                     (not= (get routes "tasks") "") [task-view]

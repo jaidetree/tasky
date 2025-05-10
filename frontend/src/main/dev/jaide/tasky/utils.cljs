@@ -1,4 +1,5 @@
 (ns dev.jaide.tasky.utils
+  (:refer-clojure :exclude [find])
   (:require
    [clojure.string :as s]))
 
@@ -17,3 +18,7 @@
        (js/URLSearchParams.)
        (.toString))))
 
+(defn find
+  [pred? coll]
+  (->> coll
+       (some #(when (pred? %) %))))

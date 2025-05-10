@@ -392,6 +392,7 @@ defmodule Tasky.Tracking do
 
   """
   def get_total_seconds_from_task(%{time_sessions: %Ecto.Association.NotLoaded{}}), do: 0
+
   def get_total_seconds_from_task(task) do
     task.time_sessions
     |> Enum.filter(fn session -> session.end_time != nil end)
@@ -399,43 +400,5 @@ defmodule Tasky.Tracking do
       DateTime.diff(session.end_time, session.start_time, :second)
     end)
     |> Enum.sum()
-  end
-
-  @doc """
-  Return task_params with estimated_time in minutes from a map with hours and minutes
-
-  ## Examples
-
-      iex> normalize_estimated_time(%{"estimated_time" => {
-        "hours" => 1,
-        "minutes" => 20,
-      }})
-      80
-
-  """
-  def normalize_estimated_time(task_params) do
-    case task_params do
-      %{"estimated_time_map" => %{"hours" => hours, "minutes" => minutes}} ->
-        total_minutes = minutes + hours * 60
-        Map.put(task_params, "estimated_time", total_minutes)
-
-      _ ->
-        task_params
-    end
-  end
-
-  @doc """
-  Calculate a tuple splitting up the hours and minutes of estimated time
-
-  ## Examples
-
-      iex> estimated_time_hours_minutes(task)
-      {1, 20}
-
-  """
-  def estimated_time_hours_minutes(%Task{} = task) do
-    hours = div(task.estimated_time, 60)
-    minutes = rem(task.estimated_time, 60)
-    {hours, minutes}
   end
 end

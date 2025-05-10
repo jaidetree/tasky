@@ -9,6 +9,7 @@
    [dev.jaide.tasky.utils :refer [class-names]]
    [dev.jaide.tasky.tasks :refer [task-validator session-validator fetch-task]]
    [dev.jaide.tasky.state-machines :refer [ratom-fsm]]
+   [dev.jaide.tasky.state.selectors :as select]
    [dev.jaide.tasky.state.tasks-fsm :as tasks-fsm]))
 
 (def estimates
@@ -114,7 +115,7 @@
 (defn parent-task-field
   [{:keys [task-fsm]}]
   (let [parent-task-id (get-in task-fsm [:task :parent_task_id])
-        selected-task-id (router/get-selected-task-id)
+        selected-task-id @select/selected-task-id
         tasks (->> (tasks-fsm/all-tasks)
                    (filter #(or (= (:id %) selected-task-id)
                                 (= (:parent_task_id %) selected-task-id))))]

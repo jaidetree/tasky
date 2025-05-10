@@ -5,6 +5,7 @@
    [dev.jaide.tasky.state-machines :refer [ratom-fsm]]
    [dev.jaide.tasky.state.task-fsm :refer [create-task-fsm]]
    [dev.jaide.tasky.tasks :refer [fetch-tasks tasks-validator]]
+   [dev.jaide.tasky.utils :as u]
    [dev.jaide.valhalla.core :as v]
    [promesa.core :as p]))
 
@@ -115,11 +116,8 @@
 
 (defn find-task-fsm
   [task-id]
-  (println "task-id" task-id)
   (->> (get tasks-fsm :tasks)
-       (filter #(= (get % :id) task-id))
-       (map :fsm)
-       (first)))
+       (u/find #(= (:id %) task-id))))
 
 #_(fsm/subscribe
    tasks-fsm

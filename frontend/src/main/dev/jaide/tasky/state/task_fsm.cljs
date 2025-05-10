@@ -65,16 +65,12 @@
 
                :update [{:timestamp (v/number)}
                         (fn [{{{:keys [task]} :context} :state :keys [dispatch _effect]}]
-                          (let [abort-controller (js/AbortController.)
-                                task (-> task
-                                         (update :estimated_time #(if (zero? %)
-                                                                    nil
-                                                                    %)))]
-                            (-> (tasks/update-task task (.-signal abort-controller))
+                          (let [[signal abort] (abort-controller)]
+                            (-> (tasks/update-task task signal)
                                 (p/then #(dispatch {:type :updated :task %}))
                                 (p/catch #(dispatch {:type :error :error %})))
                             (fn []
-                              (.abort abort-controller))))]
+                              (abort))))]
 
                :delete [{:task-id (v/string)}
                         (fn [{:keys [fsm dispatch effect]}]
@@ -87,14 +83,15 @@
        :actions [:update]
        :to [:submitting]
        :do (fn [{:keys [context]} {:keys [data]}]
-             (let [task (:task context)]
+             (let [task (:task context)
+                   task (->> data
+                             (reduce
+                              (fn [task [path value]]
+                                (assoc-in task path value))
+                              task))]
                {:state :submitting
                 :context {:error (:error context)
-                          :task (->> data
-                                     (reduce
-                                      (fn [task [path value]]
-                                        (assoc-in task path value))
-                                      task))}
+                          :task task}
                 :effect {:id :update :timestamp (js/Date.now)}}))}
 
       {:from [:submitting]

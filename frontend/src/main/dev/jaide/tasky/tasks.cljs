@@ -23,9 +23,7 @@
                 (v/literal "")
                 (v/string->date
                  {:accept-dates true})))
-    :estimated_time (v/nilable (v/number))
-    :estimated_time_map (v/record {:minutes (v/number)
-                                   :hours (v/number)})
+    :estimated_time (v/nilable (v/string->number {:accept-numbers true}))
     :id (v/string)
     :description (v/default (v/string) "")
     :parent_task_id (v/nilable (v/string))
@@ -39,9 +37,8 @@
 (def draft-validator
   (v/record
    {:title (v/string)
-    :estimated_time (v/nilable (v/number))
-    :estimated_time_map (v/record {:minutes (v/number)
-                                   :hours (v/number)})
+    :estimated_time (v/nilable
+                     (v/string->number {:accept-numbers true}))
     :description (v/nilable
                   (v/string))
     :due_date (v/nilable
