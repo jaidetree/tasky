@@ -3,6 +3,7 @@
    [clojure.string :as s]
    [reagent.core :as r]
    [dev.jaide.finity.core :as fsm]
+   [dev.jaide.tasky.dom :refer [timeout]]
    [dev.jaide.tasky.state.selectors :as select]
    [dev.jaide.tasky.views.task-form :as task-form]
    [dev.jaide.tasky.features.tasks :refer [breadcrumbs tasks-table]]))
@@ -17,6 +18,50 @@
      label]]
    children))
 
+(def timer-ref #js {:current nil})
+
+(defn update-title
+  [event]
+  (let [value (-> event .-currentTarget .-value)
+        clear-timeout (.-current timer-ref)
+        task-fsm @select/selected-task-fsm]
+    (when clear-timeout
+      (clear-timeout))
+    (.preventDefault event)
+    (.stopPropagation event)
+    (set! (.-current timer-ref)
+          (timeout 1000 #(fsm/dispatch task-fsm {:type :update :data {[:title] value}})))))
+
+(defn editable-title
+  []
+  (r/with-let [editing-ref (r/atom false)]
+    (let [editing @editing-ref
+          task-fsm @select/selected-task-fsm
+          task (get task-fsm :task)]
+      [:div.flex-grow
+       {:on-click (when-not editing
+                    #(reset! editing-ref true))
+        :on-keydown (when editing
+                      #(when (= (.. % -key) "Escape")
+                         (.preventDefault %)
+                         (reset! editing-ref false)))}
+       (if editing
+         [:input.px-2.py-1.text-2xl
+          {:type "text"
+           :class "bg-transparent border-0 w-full"
+           :ref #(when %
+                   (.focus %))
+           :name "title"
+           :default-value (:title task)
+           :on-input update-title}]
+         [:h2.text-2xl.px-2.py-1
+          (:title task)])])
+    (finally
+      (when-let [timer (.-current timer-ref)]
+        (js/clearTimeout timer)
+        (set! (.-current timer-ref)
+              nil)))))
+
 (defn task-details
   [{:keys []}]
   (let [task-fsm @select/selected-task-fsm
@@ -27,8 +72,7 @@
        {:on-input #(task-form/update-task % task-fsm)}
        [task-form/checkbox
         {:checked (task-form/completed? task)}]
-       [:h2.text-2xl
-        (:title task)]]
+       [editable-title]]
       [:div.flex.flex-row.gap-4
        [:div
         "Elapsed"
