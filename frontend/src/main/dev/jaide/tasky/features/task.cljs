@@ -3,7 +3,9 @@
    [clojure.string :as s]
    [reagent.core :as r]
    [dev.jaide.finity.core :as fsm]
+   [dev.jaide.valhalla.core :as v]
    [dev.jaide.tasky.dom :refer [timeout]]
+   [dev.jaide.tasky.state-machines :refer [ratom-fsm]]
    [dev.jaide.tasky.state.selectors :as select]
    [dev.jaide.tasky.views.task-form :as task-form]
    [dev.jaide.tasky.features.tasks :refer [breadcrumbs tasks-table]]))
@@ -18,49 +20,120 @@
      label]]
    children))
 
-(def timer-ref #js {:current nil})
+(def submit-update-fsm-spec
+  (fsm/define
+    {:id :debounce-update-fsm
 
-(defn update-title
-  [event]
-  (let [value (-> event .-currentTarget .-value)
-        clear-timeout (.-current timer-ref)
-        task-fsm @select/selected-task-fsm]
-    (when clear-timeout
-      (clear-timeout))
-    (.preventDefault event)
-    (.stopPropagation event)
-    (set! (.-current timer-ref)
-          (timeout 1000 #(fsm/dispatch task-fsm {:type :update :data {[:title] value}})))))
+     :initial {:state :display
+               :context {}}
+
+     :states {:display {}
+              :editing {:value (v/string)}}
+
+     :actions {:edit {:value (v/string)}
+               :update {:value (v/string)}
+               :cancel {}
+               :done {}}
+
+     :effects {}
+
+     :transitions
+     [{:from [:display]
+       :actions [:edit]
+       :to [:editing]
+       :do (fn [state action]
+             (let [value (:value action)]
+               {:state :editing
+                :context {:value value}}))}
+
+      {:from [:editing]
+       :actions [:update]
+       :to [:editing]
+       :do (fn [state action]
+             (assoc-in state [:context :value] (:value action)))}
+
+      {:from [:editing]
+       :actions [:cancel :done]
+       :to :display}]}))
 
 (defn editable-title
   []
-  (r/with-let [editing-ref (r/atom false)]
-    (let [editing @editing-ref
+  (r/with-let [fsm (ratom-fsm submit-update-fsm-spec)]
+    (let [{:keys [state context]} @fsm
           task-fsm @select/selected-task-fsm
-          task (get task-fsm :task)]
-      [:div.flex-grow
-       {:on-click (when-not editing
-                    #(reset! editing-ref true))
-        :on-keydown (when editing
-                      #(when (= (.. % -key) "Escape")
+          task (get task-fsm :task)
+          class "flex-grow"]
+      (if (= state :display)
+        [:div
+         {:class class
+          :on-click #(fsm/dispatch fsm {:type :edit :value (:title task)})}
+         [:h2.text-2xl.px-2.py-1
+          (:title task)]]
+        [:form
+         {:class class
+          :on-submit #(do
+                        (.preventDefault %)
+                        (fsm/dispatch task-fsm {:type :update :data {[:title] (:value context)}})
+                        (fsm/dispatch fsm {:type :done}))
+          :on-keydown #(when (= (.. % -key) "Escape")
                          (.preventDefault %)
-                         (reset! editing-ref false)))}
-       (if editing
+                         (fsm/dispatch fsm :cancel))}
          [:input.px-2.py-1.text-2xl
           {:type "text"
            :class "bg-transparent border-0 w-full"
            :ref #(when %
                    (.focus %))
            :name "title"
-           :default-value (:title task)
-           :on-input update-title}]
-         [:h2.text-2xl.px-2.py-1
-          (:title task)])])
+           :value (:value context)
+           :on-blur #(fsm/dispatch fsm {:type :cancel})
+           :on-input #(let [value (.. % -currentTarget -value)]
+                        (fsm/dispatch fsm {:type :update :value value}))}]]))
     (finally
-      (when-let [timer (.-current timer-ref)]
-        (js/clearTimeout timer)
-        (set! (.-current timer-ref)
-              nil)))))
+      (fsm/destroy fsm))))
+
+(defn editable-description
+  []
+  (r/with-let [fsm (ratom-fsm submit-update-fsm-spec)]
+    (let [{:keys [state context]} @fsm
+          task-fsm @select/selected-task-fsm
+          {:keys [description]} (get task-fsm :task)
+          class ""]
+      (if (= state :display)
+        [:div
+         {:class class
+          :on-click #(fsm/dispatch fsm {:type :edit :value description})}
+         (if (s/blank? description)
+           [:span.italic "No description"]
+           description)]
+        [:form
+         {:class class
+          :on-submit #(do
+                        (.preventDefault %)
+                        (fsm/dispatch task-fsm {:type :update :data {[:description] (:value context)}})
+                        (fsm/dispatch fsm {:type :done}))
+          :on-keydown #(do
+                         (cond
+                           (and (= (.. % -key) "Enter")
+                                (or (.-ctrlKey %) (.-metaKey %)))
+                           (do
+                             (.preventDefault %)
+                             (-> % (.-currentTarget) (.requestSubmit)))
+
+                           (= (.. % -key) "Escape")
+                           (do
+                             (.preventDefault %)
+                             (fsm/dispatch fsm :cancel))))}
+         [:textarea
+          {:class "bg-transparent border-0 w-full"
+           :ref #(when %
+                   (.focus %))
+           :name "description"
+           :value (:value context)
+           :on-blur #(fsm/dispatch fsm {:type :cancel})
+           :on-input #(let [value (.. % -currentTarget -value)]
+                        (fsm/dispatch fsm {:type :update :value value}))}]]))
+    (finally
+      (fsm/destroy fsm))))
 
 (defn task-details
   [{:keys []}]
@@ -68,10 +141,12 @@
         task (get task-fsm :task)]
     [:div.space-y-8
      [:section.flex.flex-row.gap-4.justify-between
-      [:form.flex.flex-row.gap-2.items-center
-       {:on-input #(task-form/update-task % task-fsm)}
-       [task-form/checkbox
-        {:checked (task-form/completed? task)}]
+      [:div.flex.flex-row.gap-2.items-center
+       [:form
+        {:action "#"
+         :on-input #(task-form/update-task % task-fsm)}
+        [task-form/checkbox
+         {:checked (task-form/completed? task)}]]
        [editable-title]]
       [:div.flex.flex-row.gap-4
        [:div
@@ -104,10 +179,7 @@
           :tasks @select/all-tasks}]]]]
      [:section
       [:div.p-4.rounded-md.bg-zinc-800
-       (let [description (:description task)]
-         (if (s/blank? description)
-           [:span.italic "No description"]
-           description))]]]))
+       [editable-description]]]]))
 
 (defn task-view
   [{:keys []}]
