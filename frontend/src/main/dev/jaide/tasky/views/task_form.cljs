@@ -117,17 +117,20 @@
       (let [task (get tasks-by-id parent-id)]
         (recur
          (:parent_task_id task)
-         (conj tasks (:title task)))))))
+         (cons (:title task) tasks))))))
 
 (defn tasks->options
   [tasks tasks-by-id]
-  (for [task tasks]
-    {:label
-     (->> (concat
-           [(:title task)]
-           (task-parents tasks-by-id (:parent_task_id task)))
-          (s/join " < "))
-     :value (:id task)}))
+
+  (sort-by
+   :label
+   (for [task tasks]
+     {:label
+      (->> (concat
+            (task-parents tasks-by-id (:parent_task_id task))
+            [(:title task)])
+           (s/join " / "))
+      :value (:id task)})))
 
 (defn parent-task
   [{:keys [form-id value options]}]
@@ -235,7 +238,7 @@
          {:form-id form-id
           :value (date->string (:due_date task))}]]
 
-       [:div {:class "text-sm"}
+       [:div {:class "text-sm max-w-[18rem]"}
         [parent-task
          {:form-id form-id
           :options (tasks->options tasks @select/tasks-by-id)

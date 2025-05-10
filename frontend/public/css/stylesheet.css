@@ -323,6 +323,9 @@
   .w-full {
     width: 100%;
   }
+  .max-w-\[18rem\] {
+    max-width: 18rem;
+  }
   .max-w-full {
     max-width: 100%;
   }
