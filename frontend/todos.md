@@ -45,16 +45,17 @@
 
 ### 5.1 Time Sessions Table
 
-- [ ] Render a row for each time session
+- [x] Render a row for each time session
 - [ ] Format the started field as a date string
 - [ ] Format the ended field as a time field if same date
 - [ ] Format the elapsed in months, days, hours, minutes, and seconds
 - [ ] Interrupted-by field should link to task
 
-## 6. Clock in and out of a Task
+### 5.2 Clock in and out of a Task
 
-- [ ] Render clock-in and clock-out buttons on right side of breadcrumbs
-- [ ] Clock-in should create a time session with a started_at
-- [ ] Clock-out should update a time session's ended at
-- [ ] Clock-in on another task should update a session's ended_at + interrupted_by_task_id
-- [ ] A permanent toast message should be displayed with a clock-out button
+- [x] Render clock-in and clock-out buttons on right side of breadcrumbs
+- [ ] Update fsm to store session in target task-fsm
+- [ ] Clock-in should create a time session with a start_time
+- [ ] Clock-out should update a time session's end_time
+- [ ] Clock-in on another task should update a session's end_time + interrupted_by_task_id
+- [ ] A fsm subscription should render a permanent toas with clock out button

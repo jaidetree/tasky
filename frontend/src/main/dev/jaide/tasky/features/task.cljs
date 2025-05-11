@@ -8,7 +8,8 @@
    [dev.jaide.tasky.state-machines :refer [ratom-fsm]]
    [dev.jaide.tasky.state.selectors :as select]
    [dev.jaide.tasky.views.task-form :as task-form]
-   [dev.jaide.tasky.features.tasks :refer [breadcrumbs tasks-table]]))
+   [dev.jaide.tasky.features.tasks :refer [breadcrumbs tasks-table]]
+   [dev.jaide.tasky.features.time-sessions :refer [time-sessions-table clock-actions]]))
 
 (defn form-field
   [{:keys [id label class]} & children]
@@ -187,8 +188,12 @@
   [{:keys []}]
   (let [task-id @select/selected-task-id]
     [:div.px-8.space-y-16
-     [breadcrumbs
-      {:task-id task-id}]
+     [:div.flex.flex-row.items-center.justify-between
+      [breadcrumbs
+       {:task-id task-id}]
+      [clock-actions]]
      [task-details
       {}]
+     [time-sessions-table]
      [tasks-table]]))
+

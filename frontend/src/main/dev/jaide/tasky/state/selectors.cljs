@@ -67,4 +67,15 @@
              (assoc m (:id task) task))
            {})))))
 
+(defn task-by-id
+  [task-id]
+  @(r/reaction
+    (let [tasks @tasks-by-id]
+      (get tasks task-id))))
 
+(defn session-by-id
+  [task-id session-id]
+  @(r/reaction
+    (when-let [task (task-by-id task-id)]
+      (u/find #(= (:id %) session-id)
+              (:time_sessions task)))))

@@ -8,23 +8,9 @@
    [dev.jaide.tasky.state.tasks-fsm :refer [all-tasks tasks-fsm]]
    [dev.jaide.tasky.views.delete-rocker :refer [delete-rocker]]
    [dev.jaide.tasky.views.task-form :as task-form]
+   [dev.jaide.tasky.views.table :refer [th td]]
    [dev.jaide.tasky.views.transition :as trans]
    ["@heroicons/react/24/outline" :refer [ChevronRightIcon ArrowUturnRightIcon]]))
-
-(defn th
-  [{:as attrs} & children]
-  (into
-   [:th.py-3.px-4.text-left.bg-gray-200
-    (merge attrs
-           {:class (class-names "bg-gray-200 bg-slate-600" (:class attrs))})]
-   children))
-
-(defn td
-  [{:as attrs} & children]
-  (into
-   [:td.py-2.px-4.text-sm
-    (or attrs {})]
-   children))
 
 (defn task-row
   [{:keys [task-fsm tasks level]

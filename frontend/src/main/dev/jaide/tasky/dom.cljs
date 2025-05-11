@@ -14,6 +14,13 @@
       []
       (js/clearTimeout timer))))
 
+(defn interval
+  [ms f]
+  (let [timer (js/setInterval f ms)]
+    (fn dispose
+      []
+      (js/clearInterval timer))))
+
 (defn abort-controller
   []
   (let [ac (new js/AbortController)]
