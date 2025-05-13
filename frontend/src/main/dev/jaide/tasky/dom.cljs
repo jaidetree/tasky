@@ -1,4 +1,6 @@
-(ns dev.jaide.tasky.dom)
+(ns dev.jaide.tasky.dom
+  (:require
+   [promesa.core :as p]))
 
 (defn on
   [target event-name handler & {:as opts}]
@@ -6,6 +8,12 @@
     (.addEventListener target event-str handler (clj->js (or opts {})))
     (fn off [_]
       (.removeEventListener target event-str handler))))
+
+(defn p-delay
+  [ms]
+  (p/create
+   (fn [resolve _reject]
+     (js/setTimeout #(resolve nil) ms))))
 
 (defn timeout
   [ms f]

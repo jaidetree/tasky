@@ -42,16 +42,14 @@
                :remove {:task-id (v/string)}
                :error {:error (v/instance js/Error.)}}
 
-     :effects {:fetch
-               [{}
-                (fn [{:keys [dispatch effect]}]
-                  (-> (fetch-tasks)
-                      (p/then #(dispatch {:type :fetched
-                                          :tasks (get % :tasks)}))
-                      (p/catch (fn [error]
-                                 (js/console.error error)
-                                 (dispatch {:type :error
-                                            :error error})))))]}
+     :effects {:fetch (fn [{:keys [dispatch]} effect]
+                        (-> (fetch-tasks)
+                            (p/then #(dispatch {:type :fetched
+                                                :tasks (get % :tasks)}))
+                            (p/catch (fn [error]
+                                       (js/console.error error)
+                                       (dispatch {:type :error
+                                                  :error error})))))}
 
      :transitions
      [{:from [:empty]
@@ -60,7 +58,7 @@
        :do (fn [state action]
              {:state :loading
               :context {}
-              :effect {:id :fetch}})}
+              :effects {:fetch {}}})}
 
       {:from [:loading :tasks]
        :actions [:fetched]
@@ -69,8 +67,7 @@
              {:state :tasks
               :context (merge context
                               {:tasks (->> (get action :tasks [])
-                                           (mapv task->fsm))
-                               :history (get context :history [])})})}
+                                           (mapv task->fsm))})})}
 
       {:from [:loading]
        :actions [:error]
@@ -85,7 +82,7 @@
        :do (fn tasks-refresh [{:keys [state context]} action]
              {:state state
               :context context
-              :effect {:id :fetch}})}
+              :effects {:fetch {}}})}
 
       {:from [:tasks]
        :actions [:remove]

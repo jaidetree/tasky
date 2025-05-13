@@ -12,7 +12,7 @@ defmodule TaskyWeb.TimeSessionJSON do
   Renders a single time_session.
   """
   def show(%{time_session: time_session}) do
-    %{data: data(time_session)}
+    data(time_session)
   end
 
   defp data(%TimeSession{} = time_session) do
@@ -24,7 +24,7 @@ defmodule TaskyWeb.TimeSessionJSON do
       original_end_time: time_session.original_end_time,
       description: time_session.description,
       interrupted_by_task_id: time_session.interrupted_by_task_id,
-      duration_minutes: TimeSession.duration_minutes(time_session),
+      duration_seconds: TimeSession.duration_seconds(time_session),
       created_at: time_session.inserted_at,
       updated_at: time_session.updated_at
     }

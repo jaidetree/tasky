@@ -142,7 +142,7 @@
         task (get task-fsm :task)]
     [:div.space-y-8
      [:section.flex.flex-row.gap-4.justify-between
-      [:div.flex.flex-row.gap-2.items-center
+      [:div.flex.flex-row.gap-2.items-center.flex-grow
        [:form
         {:action "#"
          :on-input #(task-form/update-task % task-fsm)}

@@ -19,9 +19,9 @@
                :new-task {}
                :close {}}
 
-     :effects {:test [{:blah (v/string)}
-                      (fn [{:keys [dispatch]}]
-                        nil)]}
+     :effects {:test {:args {:blah (v/string)}
+                      :do (fn [{:keys [dispatch]}]
+                            nil)}}
 
      :transitions
      [{:from [:closed :view-task]

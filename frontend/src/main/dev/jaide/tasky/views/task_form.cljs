@@ -121,7 +121,6 @@
 
 (defn tasks->options
   [tasks tasks-by-id]
-
   (sort-by
    :label
    (for [task tasks]
@@ -214,8 +213,10 @@
     (let [task (get form-fsm :task)
           selected-task-fsm @select/selected-task-fsm
           form-id "new-task-form"
-          tasks (cons (:task selected-task-fsm)
-                      @(select/child-tasks (get-in selected-task-fsm [:task :id])))]
+          tasks (if selected-task-fsm
+                  (cons (:task selected-task-fsm)
+                        @(select/child-tasks (get-in selected-task-fsm [:task :id])))
+                  @(select/child-tasks (get-in selected-task-fsm [:task :id])))]
       [:form
        {:id form-id
         :on-submit #(submit-form % form-fsm)

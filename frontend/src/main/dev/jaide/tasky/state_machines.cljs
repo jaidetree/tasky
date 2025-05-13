@@ -7,7 +7,7 @@
 
 (defn ratom-fsm
   "Reagent wrapper for finity atom-fsm function"
-  [spec & {:keys [_id _initial _effect] :as opts}]
+  [spec & {:keys [_id _initial _effects] :as opts}]
   (let [opts (merge {:atom atom} opts)]
     (doto (atom-fsm spec opts)
       (subscribe

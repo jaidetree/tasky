@@ -1,5 +1,6 @@
 defmodule TaskyWeb.TaskJSON do
   alias Tasky.Tracking.Task
+  alias TaskyWeb.TimeSessionJSON
 
   @doc """
   Renders a list of tasks.
@@ -36,14 +37,7 @@ defmodule TaskyWeb.TaskJSON do
 
   defp render_time_sessions(%{time_sessions: sessions}) when not is_nil(sessions) do
     for session <- sessions do
-      %{
-        id: session.id,
-        start_time: session.start_time,
-        end_time: session.end_time,
-        original_end_time: session.original_end_time,
-        description: session.description,
-        interrupted_by_task_id: session.interrupted_by_task_id
-      }
+      TimeSessionJSON.show(%{time_session: session})
     end
   end
 

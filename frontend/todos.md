@@ -38,18 +38,35 @@
 ## 5. View Task
 
 - [x] Remove estimated_time_map from backend
-- [ ] Clicking on title should toggle edit input
-- [ ] Pressing Esc while editing title should cancel edit input
-- [ ] Clicking on description should toggle edit description
-- [ ] Pressing Esc while editing description should cancel edit description
+- [x] Clicking on title should toggle edit input
+- [x] Pressing Esc while editing title should cancel edit input
+- [x] Clicking on description should toggle edit description
+- [x] Pressing Esc while editing description should cancel edit description
 
 ### 5.1 Time Sessions Table
 
 - [x] Render a row for each time session
-- [ ] Format the started field as a date string
-- [ ] Format the ended field as a time field if same date
-- [ ] Format the elapsed in months, days, hours, minutes, and seconds
-- [ ] Interrupted-by field should link to task
+- [x] Add clock-in buttons to the right of breadcrumbs
+- [x] Update task-fsm to format time-sessions as {:order [] :all {}}
+- [x] Update task-fsm to support clocked-in to assoc a new session
+- [x] Update task-fsm to support update-session
+- [x] Update task-fsm to support clock-in
+- [x] Update task-fsm to support clock-out
+- [x] Update task-fsm to support clocked-out
+- [ ] Update task-fsm to support interrupt
+- [x] Update task-fsm to support clocked-in state
+- [x] Update task-fsm to support clocking-in state
+- [x] Update task-fsm to support clocking-out state
+- [ ] Update task-fsm to support interrupting state
+- [x] Create fsm for managing the selected clocked-in task and handling interruption
+- [ ] ~~Consider having a clocked-in effect that on dispose clocks out the task?~~
+- [ ] Make the started and end dates formatting more user friendly
+- [x] Make the elapsed and estimate format more user friendly
+- [ ] When a session is clocked-in, show elapsed time counter
+- [ ] Update time_session model to have a soft delete field
+- [ ] Show deleted time_sessions crossed out and greyed out
+- [ ] In the timer toast, show total elapsed time of all sessions against the estimate
+- [x] Update backend to sort time sessions by start_time DESCENDING
 
 ### 5.2 Clock in and out of a Task
 
@@ -58,4 +75,4 @@
 - [ ] Clock-in should create a time session with a start_time
 - [ ] Clock-out should update a time session's end_time
 - [ ] Clock-in on another task should update a session's end_time + interrupted_by_task_id
-- [ ] A fsm subscription should render a permanent toas with clock out button
+- [ ] A fsm subscription should render a permanent toas with clock out butto

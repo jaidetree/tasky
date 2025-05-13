@@ -9,7 +9,7 @@
    [dev.jaide.tasky.features.toaster :refer [toaster]]
    [dev.jaide.tasky.views.diagrams :refer [diagrams]]))
 
-(defn fetch-tasks
+(defn ^:dev/after-load fetch-tasks
   []
   (try
     (fsm/dispatch tasks-fsm :fetch)

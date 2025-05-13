@@ -69,14 +69,14 @@
 (def toaster-fsm (fsm/atom-fsm toaster-fsm-spec {:atom atom}))
 
 (defn toast
-  [{:keys [content type duration title dismissable]
+  [{:keys [id content type duration title dismissable]
     :or {duration 3000
          type :info
          dismissable true}}]
   (fsm/dispatch toaster-fsm
                 {:type :pop
                  :toast {:type type
-                         :id (str (random-uuid))
+                         :id (or id (str (random-uuid)))
                          :title title
                          :content content
                          :duration duration
@@ -95,7 +95,7 @@
       [:div
        {:class
         (-> (class-names
-             "border-l-4 bg-stone-950 p-4 rounded-md w-96 shadow-lg text-base/5 relative"
+             "border-l-4 bg-stone-950 p-4 rounded-md w-[32rem] shadow-lg text-base/5 relative"
              (if (= @state-ref :dismissing)
                (tr/class
                 {:active true
@@ -110,8 +110,7 @@
              (case type
                :error "border-l-red-500"
                :success "border-l-green-500"
-               :info "border-l-blue-500"))
-            (doto println))
+               :info "border-l-blue-500")))
         :on-transition-end (fn [_event]
                              (when (= @state-ref :dismissing)
                                (dismiss id)))}
@@ -138,7 +137,8 @@
          toasts (get-in current [:context :toasts] [])]
      (for [toast toasts]
        [toast-message
-        {:toast toast}]))])
+        {:key (:id toast)
+         :toast toast}]))])
 
 (fsm/subscribe toaster-fsm
                (fn [{:keys [next action]}]

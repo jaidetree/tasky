@@ -70,13 +70,13 @@ defmodule Tasky.Tracking.TimeSession do
     end
   end
 
-  def duration_minutes(time_session) do
+  def duration_seconds(time_session) do
     case {time_session.start_time, time_session.end_time} do
       {start_time, end_time} when not is_nil(start_time) and not is_nil(end_time) ->
-        DateTime.diff(end_time, start_time, :minute)
+        DateTime.diff(end_time, start_time, :second)
 
       {start_time, nil} when not is_nil(start_time) ->
-        DateTime.diff(DateTime.utc_now(), start_time, :minute)
+        DateTime.diff(DateTime.utc_now(), start_time, :second)
 
       _ ->
         0

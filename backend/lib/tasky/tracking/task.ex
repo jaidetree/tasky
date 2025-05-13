@@ -18,7 +18,7 @@ defmodule Tasky.Tracking.Task do
 
     belongs_to :parent_task, __MODULE__
     has_many :subtasks, __MODULE__, foreign_key: :parent_task_id
-    has_many :time_sessions, TimeSession
+    has_many :time_sessions, TimeSession, preload_order: [desc: :start_time]
     has_many :notes, Note
 
     timestamps(type: :utc_datetime)

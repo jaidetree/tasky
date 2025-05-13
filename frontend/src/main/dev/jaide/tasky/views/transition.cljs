@@ -152,10 +152,9 @@
      :actions {:subscribe {:handler subscriber-validator}
                :unsubscribe {:handler subscriber-validator}}
 
-     :effects {:broadcast [{}
-                           (fn [{:keys [fsm]}]
-                             (on js/document.body "transitionend"
-                                 #(broadcast-to-subs % (get fsm :subscribers))))]}
+     :effects {:broadcast (fn [{:keys [fsm]}]
+                            (on js/document.body "transitionend"
+                                #(broadcast-to-subs % (get fsm :subscribers))))}
 
      :transitions
      [{:from [:inactive]
@@ -164,7 +163,7 @@
        :do (fn [_state action]
              {:state :active
               :context {:subscribers #{(:handler action)}}
-              :effect :broadcast})}
+              :effects {:broadcast {}}})}
 
       {:from [:active]
        :actions [:subscribe]

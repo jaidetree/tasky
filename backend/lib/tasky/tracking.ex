@@ -35,6 +35,7 @@ defmodule Tasky.Tracking do
   def list_tasks_with_time_sessions do
     Task
     |> where([t], is_nil(t.deleted_at))
+    |> order_by([t], asc: t.sort_order, asc: t.inserted_at)
     |> preload(:time_sessions)
     |> Repo.all()
   end
@@ -183,7 +184,9 @@ defmodule Tasky.Tracking do
 
   """
   def list_time_sessions do
-    Repo.all(TimeSession)
+    TimeSession
+    |> order_by([s], desc: s.start_time)
+    |> Repo.all()
   end
 
   @doc """

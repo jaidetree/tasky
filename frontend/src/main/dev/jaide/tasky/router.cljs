@@ -100,12 +100,11 @@
                :push {:route (v/nilable (v/assert map?))
                       :replace (v/nilable (v/keyword))}}
 
-     :effects {:sync-popstate [{}
-                               (fn [{:keys [dispatch]}]
-                                 (on js/window "popstate"
-                                     #(do
-                                        (.preventDefault %)
-                                        (dispatch {:type :pop :url (location-str)}))))]}
+     :effects {:sync-popstate (fn [{:keys [dispatch]}]
+                                (on js/window "popstate"
+                                    #(do
+                                       (.preventDefault %)
+                                       (dispatch {:type :pop :url (location-str)}))))}
 
      :transitions
      [{:from [:inactive]
@@ -147,14 +146,12 @@
   [route & {:keys [replace]}]
   (fsm/dispatch router-fsm {:type :push :route route :replace replace}))
 
-(comment)
-
 (defn sync-parent-id-from-route
   [form-fsm]
   (fsm/subscribe
    router-fsm
    (fn [{:keys [prev next _action]}]
-     (let [task-id (get-in next [:context :paths "tasks"] "")]
+     (let [task-id (get-in next [:context :routes "tasks"] "")]
        (when (not= (:context prev) (:context next))
          (fsm/dispatch form-fsm {:type :update
                                  :data {[:parent_task_id] task-id}}))))))

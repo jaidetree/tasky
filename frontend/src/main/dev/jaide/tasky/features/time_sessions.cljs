@@ -1,166 +1,65 @@
 (ns dev.jaide.tasky.features.time-sessions
   (:require
-   [promesa.core :as p]
+   [clojure.string :as s]
    [dev.jaide.finity.core :as fsm]
-   [dev.jaide.valhalla.core :as v]
-   [dev.jaide.tasky.dom :refer [interval abort-controller]]
+   [dev.jaide.tasky.features.toaster :refer [toast dismiss]]
+   [dev.jaide.tasky.state.time-sessions-fsm :refer [time-sessions-fsm clock-in clock-out]]
    [dev.jaide.tasky.time-sessions :as time-sessions]
    [dev.jaide.tasky.state.selectors :as select]
    [dev.jaide.tasky.views.table :refer [th td]]))
 
-(def session-fsm-spec
-  (fsm/define
-    {:id :time-session-fsm
+(defn parse-duration
+  [duration]
+  (let [remaining duration
+        days (js/Math.floor (/ remaining (* 24 60 60)))
+        remaining (- remaining (* days 24 60 60))
+        hours (js/Math.floor (/ remaining (* 60 60)))
+        remaining (- remaining (* hours 60 60))
+        minutes (js/Math.floor (/ remaining 60))
+        remaining (- remaining (* minutes 60))
+        seconds remaining]
+    {:days days
+     :hours hours
+     :minutes minutes
+     :seconds seconds}))
 
-     :initial {:state :idle
-               :context {}}
+(defn sec->str
+  [duration]
+  (let [{:keys [days hours minutes seconds]} (parse-duration duration)]
+    (->> [[days "d"]
+          [hours "hrs"]
+          [minutes "min"]
+          [seconds "s"]]
+         (filter #(or (pos? (first %))
+                      (= (second %) "s")))
+         (map #(str (first %) " " (second %)))
+         (s/join " "))))
 
-     :states {:idle       {}
-              :creating   {:task-id (v/string)
-                           :session time-sessions/validator}
-              :clocked-in {:session-id (v/string)
-                           :elapsed (v/number)
-                           :task-id (v/string)}
-              :clocking-out {:task-id (v/string)
-                             :session-id time-sessions/validator}
-              :interrupting {:prev-task-id (v/string)
-                             :prev-session-id time-sessions/validator
-                             :next-task-id (v/string)
-                             :next-session time-sessions/validator}}
-
-     :actions {:set {:task-id (v/string) :session time-sessions/validator}
-               :clock-in {:task-id (v/string)}
-               :tick {}
-               :clock-out {:task-id (v/string)}
-               :clocked-out {:task-id (v/string)}
-               :created {:session time-sessions/validator}
-               :error {:error (v/instance js/Error)}
-               :interrupted {:next-session time-sessions/validator
-                             :prev-session time-sessions/validator}}
-
-     :effects {:create [{}
-                        (fn [{:keys [dispatch state context]}]
-                          (let [[signal abort] (abort-controller)]
-                            (-> (p/let [session (time-sessions/create (:session context) :signal signal)]
-                                  (dispatch {:type :created :session session}))
-                                (p/catch
-                                 (fn [error]
-                                   (dispatch {:type :error :error error}))))
-                            abort))]
-               :start-clock [{}
-                             (fn [{:keys [dispatch]}]
-                               (interval 1000 #(dispatch {:type :tick})))]
-
-               :update [{}
-                        (fn [{:keys [dispatch state context]}]
-                          (let [session (:session context)
-                                [signal abort] (abort-controller)]
-                            (-> (p/let [session (time-sessions/update session :signal signal)]
-                                  (dispatch {:type :clocked-out :task-id (:task_id session)}))
-                                (p/catch
-                                 (fn [error]
-                                   (dispatch {:type :error :error error}))))
-                            abort))]
-
-               :interrupt [{}
-                           (fn [{:keys [dispatch state context]}]
-                             (let [{:keys [next-session prev-session-id prev-task-id]} context
-                                   [signal abort] (abort-controller)]
-                               (-> (p/let [prev-session (select/session-by-id prev-task-id prev-session-id)
-                                           prev-session (time-sessions/update prev-session :signal signal)
-                                           next-session (time-sessions/create next-session :signal signal)
-                                           prev-session (-> prev-session
-                                                            (assoc :interrupted_by_task_id (:id next-session))
-                                                            (time-sessions/update :signal signal))]
-                                     (dispatch {:type :interrupted
-                                                :next-session next-session
-                                                :prev-session-id prev-session-id}))
-                                   (p/catch
-                                    (fn [error]
-                                      (dispatch {:type :error :error error}))))
-                               abort))]}
-
-     :transitions
-     [{:from [:idle]
-       :actions [:clock-in]
-       :to [:creating]
-       :do (fn [_state action]
-             {:state :creating
-              :context {:task-id (:task-id action)
-                        :session {:id ""
-                                  :start_time (new js/Date)
-                                  :description ""
-                                  :task_id (:task-id action)}}
-              :effect {:id :create}})}
-
-      {:from [:creating]
-       :actions [:created]
-       :to [:clocked-in]
-       :do (fn [state action]
-             {:state :clocked-in
-              :context {:task-id (get-in state [:context :task-id])
-                        :session-id (get-in action [:session :id])
-                        :elapsed (- (js/Date.now) (get-in action [:session :start_time]))}
-              :effect {:id :start-clock}})}
-
-      {:from [:clocked-in]
-       :actions [:tick]
-       :to [:clocked-in]
-       :do (fn [state _action]
-             (assoc-in state [:context :elapsed] (- (js/Date.now) (get-in state [:context :session :start_time]))))}
-
-      {:from [:clocked-in]
-       :actions [:clock-out]
-       :to [:clocking-out]
-       :do (fn [current action]
-             (let [{:keys [context state]} current]
-               {:state :clocking-out
-                :context {:task-id (:task-id context)
-                          :session-id (:session-id context)}
-                :effect :update}))}
-
-      {:from [:clocking-out]
-       :actions [:clocked-out]
-       :to :idle}
-
-      {:from [:clocked-in]
-       :actions [:clock-in]
-       :to [:interrupting]
-       :do (fn [{:keys [_state context]} action]
-             {:state :interrupting
-              :context {:prev-task-id (:task-id context)
-                        :next-task-id (:task-id action)
-                        :prev-session-id (:session-id context)
-                        :next-session {:id ""
-                                       :start_time (new js/Date)
-                                       :description ""
-                                       :task_id (:task-id action)}}
-
-              :effect {:id :interrupt}})}
-
-      {:from [:interrupting]
-       :actions [:interrupted]
-       :to [:clocked-in]
-       :do (fn [state action]
-             (let [session (:next-session action)]
-               {:state :clocked-in
-                :context {:task-id (:task_id session)
-                          :session-id (get-in action [:session :id])
-                          :elapsed (- (js/Date.now (get-in action [:session :start_time])))}
-                :effect {:id :start-clock}}))}]}))
+(defn min->sec
+  [duration]
+  (* duration 60))
 
 (defn time-session-row
   [{:keys [time-session]}]
   [:tr
    [td
     {}
-    (:started_at time-session)]])
+    (.toLocaleString (:start_time time-session))]
+   [td
+    {}
+    (when-let [end-time (:end_time time-session)]
+      (.toLocaleString end-time))]
+   [td
+    {}
+    (sec->str (:duration_seconds time-session))]
+   [td
+    {}
+    (:interrupted_by_task_id time-session)]])
 
 (defn time-sessions-table
   []
   (let [task-fsm @select/selected-task-fsm
         task (:task task-fsm)]
-    (println task)
     [:table.min-w-full.table-auto
      [:thead
       {:class ""}
@@ -183,16 +82,75 @@
 
      [:tbody
       (doall
-       (for [time-session (:time_sessions task)]
-         [time-session-row {:key (:id time-session)
-                            :time-session time-session}]))]]))
+       (for [session-id (get-in task-fsm [:sessions :order])]
+         (let [time-session (get-in task-fsm [:sessions :all session-id])]
+           [time-session-row {:key (:id time-session)
+                              :time-session time-session}])))]]))
 
 (defn clock-actions
   []
-  [:div.flex.flex-row.gap-4
-   [:button
-    {:class "btn bg-red-500"}
-    "Clock Out"]
-   [:button
-    {:class "btn bg-blue-500"}
-    "Clock In"]])
+  (let [task-id @select/selected-task-id]
+    [:div.flex.flex-row.gap-4
+     [:button
+      {:class "btn bg-red-500"}
+      "Clock Out"]
+     [:button
+      {:class "btn bg-blue-500"
+       :on-click #(clock-in task-id)}
+      "Clock In"]]))
+
+(defn task-clock
+  [{:keys [task-fsm]}]
+  (let [task (get task-fsm :task)
+        elapsed (get task-fsm :elapsed)
+        estimated (-> (get task :estimated_time)
+                      (min->sec))]
+    [:div
+     [:div
+      [:span
+       {:class "block text-slate-400/80 text-xs uppercase tracking-wide"}
+       "Task"]
+
+      [:h2.text-lg
+       (:title task)]]
+     [:div
+      {:class "flex flex-row justify-between mt-4 items-center"}
+      [:div
+       {:class "font-mono flex flex-row justify-start items-end gap-2"}
+       [:div
+        [:span
+         {:class "block text-slate-400/80 text-xs/5 uppercase tracking-wide"}
+         "Elapsed"]
+        (sec->str elapsed)]
+       [:span
+        {:class "text-base text-slate-400/80"}
+        " / "]
+       [:div
+        [:span
+         {:class "block text-slate-400/80 text-xs/5 uppercase tracking-wide"}
+         "Estimate"]
+        (sec->str estimated)]]
+      [:button
+       {:on-click clock-out
+        :type "button"
+        :class "btn bg-red-500"}
+       "Clock Out"]]]))
+
+(fsm/subscribe
+ time-sessions-fsm
+ (fn [{:keys [next action]}]
+   (when (= (:state next) :clocked-in)
+     (let [task-fsm (get-in next [:context :task-fsm])]
+       (toast
+        {:id "active-task"
+         :type :info
+         :duration nil
+         :dismissable false
+         :title "Clocked In"
+         :content [task-clock
+                   {:task-fsm task-fsm}]})))
+   (when (and (= (:state next) :idle)
+              (= (:type action) :clock-out))
+     (dismiss "active-task"))))
+
+

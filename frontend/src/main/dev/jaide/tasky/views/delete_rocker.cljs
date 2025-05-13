@@ -27,7 +27,7 @@
       (el->rect)))
 
 (defn mouse-move-handler
-  [{:keys [dispatch fsm state effect]}]
+  [{:keys [dispatch]} effect]
   (fn [event]
     (let [{:keys [thumb track]} effect
           thumb-rect (el->rect thumb)
@@ -52,7 +52,7 @@
                  :percent percent}))))
 
 (defn mouse-up-handler
-  [{:keys [dispatch fsm state]}]
+  [{:keys [dispatch]}]
   (fn [event]
     (dispatch {:type :mouse-up})))
 
@@ -84,17 +84,16 @@
                :cancel {}
                :delete {}}
 
-     :effects  {:start-drag
-                [{:thumb (v/instance js/HTMLButtonElement)
-                  :track (v/instance js/HTMLDivElement)}
-                 (fn [{:keys [] :as opts}]
-                   (let [dispose-mouse-move (on js/window :mousemove (mouse-move-handler opts))
-                         dispose-mouse-up (on js/window :mouseup (mouse-up-handler opts))
-                         dispose-key-up (on js/window :keyup (key-up-handler opts))]
-                     (fn []
-                       (dispose-mouse-move)
-                       (dispose-mouse-up)
-                       (dispose-key-up))))]}
+     :effects  {:start-drag {:args {:thumb (v/instance js/HTMLButtonElement)
+                                    :track (v/instance js/HTMLDivElement)}
+                             :do (fn [{:keys [] :as opts} effect]
+                                   (let [dispose-mouse-move (on js/window :mousemove (mouse-move-handler opts effect))
+                                         dispose-mouse-up (on js/window :mouseup (mouse-up-handler opts))
+                                         dispose-key-up (on js/window :keyup (key-up-handler opts))]
+                                     (fn []
+                                       (dispose-mouse-move)
+                                       (dispose-mouse-up)
+                                       (dispose-key-up))))}}
 
      :transitions
      [{:from [:ready]
@@ -103,12 +102,11 @@
        :do (fn [state action]
              {:state :dragging
               :context {:x 0 :percent 0}
-              :effect (let [thumb (-> action :event .-currentTarget)
-                            track (-> thumb .-parentElement)]
-                        (-> action :event .preventDefault)
-                        {:id :start-drag
-                         :thumb thumb
-                         :track track})})}
+              :effects {:start-drag (let [thumb (-> action :event .-currentTarget)
+                                          track (-> thumb .-parentElement)]
+                                      (-> action :event .preventDefault)
+                                      {:thumb thumb
+                                       :track track})}})}
 
       {:from [:dragging :holding]
        :actions [:mouse-move]
@@ -118,14 +116,14 @@
                             (:context state)
                             {:x (:x action)
                              :percent (:percent action)})
-                   effect (get state :effect)]
+                   effects (get state :effects)]
                (if (= (:percent action) 100)
                  {:state :holding
                   :context context
-                  :effect effect}
+                  :effects effects}
                  {:state :dragging
                   :context context
-                  :effect effect})))}
+                  :effects effects})))}
 
       {:from [:dragging :holding]
        :actions [:cancel :mouse-up]
@@ -156,10 +154,10 @@
                :tick {}}
 
      :effects {:set-timer
-               [{:remaining (v/number)}
-                (fn [{:keys [dispatch]}]
-                  (timeout 1000
-                           #(dispatch {:type :tick})))]}
+               {:args {:remaining (v/number)}
+                :do (fn [{:keys [dispatch]}]
+                      (timeout 1000
+                               #(dispatch {:type :tick})))}}
 
      :transitions
      [{:from [:inactive]
@@ -168,8 +166,7 @@
        :do (fn [_state {:keys [seconds]}]
              {:state :active
               :context {:remaining seconds}
-              :effect {:id :set-timer
-                       :remaining seconds}})}
+              :effects {:set-timer {:remaining seconds}}})}
 
       {:from [:active]
        :actions [:tick]
@@ -180,8 +177,7 @@
                  {:state :complete}
                  {:state state
                   :context {:remaining remaining}
-                  :effect {:id :set-timer
-                           :remaining remaining}})))}]}))
+                  :effects {:set-timer {:remaining remaining}}})))}]}))
 
 (defn color-mix
   [percent color-a color-b]
@@ -264,7 +260,7 @@
                                   :context {}}})
         unsubscribe (fsm/subscribe
                      fsm
-                     (fn [{:keys [prev next]}]
+                     (fn [{:keys [prev next action]}]
                        (when (and (= (:state next) :deleting)
                                   (not= (:state prev) (:state next)))
                          (on-delete))))]
